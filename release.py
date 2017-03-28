@@ -14,6 +14,7 @@ TASK_PROJECT = 'TAN'
 RELEASE_PROJECT = 'RELEASE'
 TASK_RE = re.compile(r'({}-\d+)\s'.format(TASK_PROJECT), flags=re.U | re.I)
 PR_RE = re.compile(r'\(#(\d+)\)', flags=re.U | re.I)
+REPO_RE = re.compile(r'[/:](\w+/\w+)\.git')
 
 GetTaskResponse = namedtuple('GetTaskResponse', ('tasks', 'left_pulls'))
 
@@ -39,13 +40,13 @@ def get_related_tasks(task_key, origin_branch, api_client):
     left_pulls = set()
     for line in commit_messages.split('\n'):
         tasks = TASK_RE.findall(line)
-        pull_request = PR_RE.search(line)
-        if pull_request and not tasks:
-            pr_number = int(pull_request.group(1))
+        pull_request_match = PR_RE.search(line)
+        if pull_request_match and not tasks:
+            pr_number = int(pull_request_match.group(1))
             tasks = get_pr_task(api_client=api_client, pr=pr_number)
             if not tasks:
                 left_pulls.add(pr_number)
-        if not pull_request:
+        if not pull_request_match:
             continue
         all_tasks |= {task.upper() for task in tasks}
 
@@ -115,8 +116,11 @@ class API:
 
     @cached_property
     def github_repository(self):
-        assert self._args.github_repo
-        return self.github.get_repo(self._args.github_repo)
+        github_repo_match = REPO_RE.search(
+            subprocess.check_output('git remote -v', shell=True).decode('utf-8')
+        )
+        assert github_repo_match
+        return self.github.get_repo(github_repo_match.group(1))
 
 
 def run(commands, api_client, origin_branch, jira_task_extra, task_key=None):
@@ -168,7 +172,6 @@ def parse_args():
         help='Something like \'{"component": "Backend"}\'')
     parser.add_argument('--github-user')
     parser.add_argument('--github-password')
-    parser.add_argument('--github-repo')
 
     return parser.parse_args()
 
