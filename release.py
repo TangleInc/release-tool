@@ -24,7 +24,8 @@ def git_fetch():
 def get_related_tasks(task_key, origin_branch):
     git_fetch()
     commit_messages = subprocess.check_output(
-        'git log origin/{}..origin/{} --pretty=%B'.format(origin_branch, task_key.lower()),
+        'git log origin/{}..origin/{} --pretty=%B'.format(
+            origin_branch, task_key.lower()),
         shell=True
     ).decode('utf-8')
 
@@ -73,8 +74,13 @@ def make_release_task(jira, extra_fields):
 
 def make_release_branch(task_key):
     git_fetch()
+    commands = [
+        'git checkout origin/develop',
+        'git checkout -b {branch}',
+        'git push origin {branch}'
+    ]
     subprocess.check_call(
-        'git checkout origin/develop && git checkout -b {branch} && git push origin {branch}'.format(branch=task_key.lower()),
+        (' && '.join(commands)).format(branch=task_key.lower()),
         shell=True
     )
 
@@ -92,13 +98,19 @@ def get_jira_api(jira_server, jira_user, jira_password):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('commands', nargs='+', choices=['all', 'make-task', 'make-branch', 'make-relations'])
+    parser.add_argument(
+        'commands',
+        nargs='+',
+        choices=['all', 'make-task', 'make-branch', 'make-relations'])
     parser.add_argument('--release-task')
     parser.add_argument('--origin-branch', default='master')
     parser.add_argument('--jira-server')
     parser.add_argument('--jira-user')
     parser.add_argument('--jira-password')
-    parser.add_argument('--jira-task-extra', type=lambda value: json.loads(value))
+    parser.add_argument(
+        '--jira-task-extra',
+        type=lambda value: json.loads(value),
+        help='Something like \'{"component": "Backend"}\'')
 
     args = parser.parse_args()
 
