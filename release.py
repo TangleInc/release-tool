@@ -10,6 +10,13 @@ from cached_property import cached_property
 from jira import JIRA
 from github import Github
 
+class Command:
+    PREPARE = 'prepare'
+    MAKE_TASK = 'make-task'
+    MAKE_BRANCH = 'make-branch'
+    MAKE_RELATIONS = 'make-relations'
+
+
 TASK_PROJECT = 'TAN'
 RELEASE_PROJECT = 'RELEASE'
 TASK_RE = re.compile(r'({}-\d+)\s'.format(TASK_PROJECT), flags=re.U | re.I)
@@ -124,16 +131,16 @@ class API:
 
 
 def run(commands, api_client, origin_branch, jira_task_extra, task_key=None):
-    if 'all' in commands or 'make-task' in commands:
+    if Command.PREPARE in commands or Command.MAKE_TASK in commands:
         task_key = make_release_task(api_client, jira_task_extra)
         print('Made new task: {}'.format(task_key))
 
-    if 'all' in commands or 'make-branch' in commands:
+    if Command.PREPARE in commands or Command.MAKE_BRANCH in commands:
         assert task_key
         make_release_branch(task_key)
         print('Made release branch')
 
-    if 'all' in commands or 'make-relations' in commands:
+    if Command.PREPARE in commands or Command.MAKE_RELATIONS in commands:
         assert task_key
         relations = get_related_tasks(task_key, origin_branch, api_client=api_client)
 
@@ -160,7 +167,12 @@ def parse_args():
     parser.add_argument(
         'commands',
         nargs='+',
-        choices=['all', 'make-task', 'make-branch', 'make-relations'])
+        choices=[
+            Command.PREPARE,
+            Command.MAKE_TASK,
+            Command.MAKE_BRANCH,
+            Command.MAKE_RELATIONS
+        ])
     parser.add_argument('--release-task')
     parser.add_argument('--origin-branch', default='master')
     parser.add_argument('--jira-server')
