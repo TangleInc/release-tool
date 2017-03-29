@@ -1,14 +1,16 @@
+import argparse
 import json
+import os
 import re
 import subprocess
-
 import sys
-import argparse
 from collections import namedtuple
 
+import yaml
 from cached_property import cached_property
-from jira import JIRA
 from github import Github
+from jira import JIRA
+
 
 class Command:
     PREPARE = 'prepare'
@@ -36,6 +38,7 @@ def get_pr_task(api_client, pr):
 
 
 def get_related_tasks(task_key, origin_branch, api_client):
+    assert origin_branch
     git_fetch()
     commit_messages = subprocess.check_output(
         'git log origin/{}..origin/{} --pretty=%B'.format(
@@ -174,7 +177,7 @@ def parse_args():
             Command.MAKE_RELATIONS
         ])
     parser.add_argument('--release-task')
-    parser.add_argument('--origin-branch', default='master')
+    parser.add_argument('--origin-branch')
     parser.add_argument('--jira-server')
     parser.add_argument('--jira-user')
     parser.add_argument('--jira-password')
@@ -188,8 +191,35 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == '__main__':
+def parse_config():
+    path = os.path.join(os.path.dirname(__file__), 'config.yml')
+    if not os.path.exists(path=path):
+        return None
+
+    with open(path) as fo:
+        return yaml.load(fo.read())
+
+
+def parse_and_combine_args():
+    config = parse_config()
     args = parse_args()
+    if not config:
+        return args
+
+    names = (
+        'origin-branch', 'jira-server', 'jira-user', 'jira-password',
+        'jira-task-extra', 'github-user', 'github-password')
+    for name in names:
+        if name not in config:
+            continue
+
+        if getattr(args, name.replace('-', '_')) is None:
+            setattr(args, name.replace('-', '_'), config[name])
+    return args
+
+
+if __name__ == '__main__':
+    args = parse_and_combine_args()
     run(
         commands=args.commands,
         api_client=API(args),
