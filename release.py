@@ -18,6 +18,8 @@ class Command:
     MAKE_BRANCH = 'make-branch'
     MAKE_RELATIONS = 'make-relations'
 
+    MERGE_RELEASE = 'merge-release'
+
 
 TASK_PROJECT = 'TAN'
 RELEASE_PROJECT = 'RELEASE'
@@ -32,6 +34,14 @@ def git_fetch():
     subprocess.check_call('git fetch', shell=True, stdout=subprocess.PIPE)
 
 
+def get_branch_from_task(task_key):
+    return task_key.lower()
+
+
+def get_version_from_branch(branch):
+    return branch.split('-')[1]
+
+
 def get_pr_task(api_client, pr):
     pull = api_client.github_repository.get_pull(pr)
     return TASK_RE.findall(pull.title)
@@ -42,7 +52,7 @@ def get_related_tasks(task_key, origin_branch, api_client):
     git_fetch()
     commit_messages = subprocess.check_output(
         'git log origin/{}..origin/{} --pretty=%B'.format(
-            origin_branch, task_key.lower()),
+            origin_branch, get_branch_from_task(task_key)),
         shell=True
     ).decode('utf-8')
 
@@ -99,9 +109,46 @@ def make_release_branch(task_key):
         'git push origin {branch}'
     ]
     subprocess.check_call(
-        (' && '.join(commands)).format(branch=task_key.lower()),
+        (' && '.join(commands)).format(branch=get_branch_from_task(task_key)),
         shell=True
     )
+
+
+def merge_release(task_key, api_client):
+    git_fetch()
+    master_commands = (
+        'git checkout master',
+        'git reset --hard origin/master',
+        'git merge --no-ff origin/{branch} -m "Merge origin/{branch}"',
+        'git tag v{version}',
+        'git push origin master',
+        'git push origin v{version}'
+    )
+
+    branch = get_branch_from_task(task_key)
+    subprocess.check_call(
+        (' && '.join(master_commands)).format(
+            branch=branch,
+            version=get_version_from_branch(branch)),
+        shell=True
+    )
+
+    is_differ = subprocess.check_output(
+        'git log origin/develop..origin/{branch}'.format(branch=branch),
+        shell=True
+    )
+    if is_differ:
+        api_client.github_repository.create_pull(
+            title='Release {version}'.format(version=get_version_from_branch(branch)),
+            body='',
+            base='develop',
+            head=branch
+        )
+    else:
+        subprocess.check_call(
+            'git push origin :{branch}'.format(branch=branch),
+            shell=True
+        )
 
 
 class API:
@@ -164,6 +211,10 @@ def run(commands, api_client, origin_branch, jira_task_extra, task_key=None):
         if relations.left_pulls:
             exit(1)
 
+    if Command.MERGE_RELEASE in commands:
+        assert task_key
+        merge_release(task_key, api_client)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -174,7 +225,8 @@ def parse_args():
             Command.PREPARE,
             Command.MAKE_TASK,
             Command.MAKE_BRANCH,
-            Command.MAKE_RELATIONS
+            Command.MAKE_RELATIONS,
+            Command.MERGE_RELEASE
         ])
     parser.add_argument('--release-task')
     parser.add_argument('--origin-branch')
