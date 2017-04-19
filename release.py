@@ -151,20 +151,16 @@ def merge_release(github_repository, release_project, release_version):
 
     execute_commands(
         [
+            'git checkout origin/{branch}'
+            'git tag {version}',
+            'git push origin {version}',
             'git checkout master',
             'git reset --hard origin/master',
             'git merge --no-ff origin/{branch} -m "Merge origin/{branch}"',
-            'git push origin: {branch}'
-        ],
-        branch=branch
-    )
-
-    execute_commands(
-        [
-            'git tag {version}',
             'git push origin master',
-            'git push origin {version}'
+            'git push origin :{branch}'
         ],
+        branch=branch,
         version=release_version
     )
 
