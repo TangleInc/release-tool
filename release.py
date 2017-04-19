@@ -35,7 +35,6 @@ ARGUMENTS = (
     'jira-task-extra',
     'jira-user',
     'release-set',
-    'release-get',
 )
 
 GetTaskResponse = namedtuple('GetTaskResponse', ('tasks', 'left_pulls'))
@@ -45,16 +44,12 @@ def git_fetch():
     subprocess.check_call('git fetch', shell=True, stdout=subprocess.PIPE)
 
 
-def get_branch_from_task(task_key):
-    return task_key.lower()
+def get_branch_name(release_project, version):
+    return '{}-{}'.format(release_project.lower(), version)
 
 
-def get_version_from_branch(branch):
-    return branch.split('-')[1]
-
-
-def get_pr_task(api_client, pr, task_re):
-    pull = api_client.github_repository.get_pull(pr)
+def get_pr_task(github_repository, pr, task_re):
+    pull = github_repository.get_pull(pr)
     return task_re.findall(pull.title)
 
 
@@ -65,11 +60,14 @@ def execute_commands(commands, **format_kwargs):
     )
 
 
-def get_related_tasks(task_key, api_client, task_re):
+def get_related_tasks(github_repository, task_re, release_project, release_version):
     git_fetch()
     commit_messages = subprocess.check_output(
         'git log origin/master..origin/{} --pretty=%B'.format(
-            get_branch_from_task(task_key)),
+            get_branch_name(
+                release_project=release_project,
+                version=release_version
+            )),
         shell=True
     ).decode('utf-8')
 
@@ -80,7 +78,11 @@ def get_related_tasks(task_key, api_client, task_re):
         pull_request_match = PR_RE.search(line)
         if pull_request_match and not tasks:
             pr_number = int(pull_request_match.group(1))
-            tasks = get_pr_task(api_client=api_client, pr=pr_number, task_re=task_re)
+            tasks = get_pr_task(
+                github_repository=github_repository,
+                pr=pr_number,
+                task_re=task_re
+            )
             if not tasks:
                 left_pulls.add(pr_number)
         if not pull_request_match:
@@ -93,12 +95,12 @@ def get_related_tasks(task_key, api_client, task_re):
     )
 
 
-def make_links(api_client, task_key, related_keys):
+def make_links(jira_client, task_key, related_keys):
     for related_key in related_keys:
-        api_client.jira.create_issue_link('relates to', task_key, related_key)
+        jira_client.create_issue_link('relates to', task_key, related_key)
 
 
-def make_release_task(api_client, extra_fields, release_project, release_version):
+def make_release_task(jira_client, extra_fields, release_project, release_version):
     if not extra_fields:
         extra_fields = {}
 
@@ -114,7 +116,7 @@ def make_release_task(api_client, extra_fields, release_project, release_version
         summary = 'Release {release_version}'.format(
             release_version=release_version)
 
-    issue = api_client.jira.create_issue(
+    issue = jira_client.create_issue(
         project=release_project,
         summary=summary,
         issuetype={'name': 'Task'},
@@ -123,7 +125,7 @@ def make_release_task(api_client, extra_fields, release_project, release_version
     return issue.key
 
 
-def make_release_branch(task_key, release_set, release_version):
+def make_release_branch(release_set, release_version, release_project):
     git_fetch()
     execute_commands(
         [
@@ -133,15 +135,19 @@ def make_release_branch(task_key, release_set, release_version):
             'git commit -am "Release {release_version}"',
             'git push origin {branch}'
         ],
-        branch=get_branch_from_task(task_key),
+        branch=get_branch_name(
+            release_project=release_project,
+            version=release_version),
         release_set=release_set,
         release_version=release_version
     )
 
 
-def merge_release(task_key, api_client, release_get):
+def merge_release(github_repository, release_project, release_version):
     git_fetch()
-    branch = get_branch_from_task(task_key)
+    branch = get_branch_name(
+        release_project=release_project,
+        version=release_version)
 
     execute_commands(
         [
@@ -153,20 +159,17 @@ def merge_release(task_key, api_client, release_get):
         branch=branch
     )
 
-    version = subprocess.check_output(release_get, shell=True)
-    version = version.strip()
-
     execute_commands(
         [
             'git tag {version}',
             'git push origin master',
             'git push origin {version}'
         ],
-        version=version
+        version=release_version
     )
 
-    api_client.github_repository.create_pull(
-        title='Release {version}'.format(version=get_version_from_branch(branch)),
+    github_repository.create_pull(
+        title='Release {version}'.format(version=release_version),
         body='',
         base='develop',
         head='master'
@@ -203,34 +206,38 @@ class API:
 
 
 def run(commands, api_client, jira_task_extra, task_key, task_re, release_project,
-        release_version, release_set, release_get):
+        release_version, release_set):
+
+    assert release_project
+    assert release_version
+    assert task_re
+
     if Command.PREPARE in commands or Command.MAKE_TASK in commands:
-        assert release_project
-        assert release_version
         task_key = make_release_task(
-            api_client=api_client,
+            jira_client=api_client.jira,
             extra_fields=jira_task_extra,
             release_project=release_project,
             release_version=release_version)
         print('Made new task: {}'.format(task_key))
 
     if Command.PREPARE in commands or Command.MAKE_BRANCH in commands:
-        assert task_key
-        assert release_version
         assert release_set
         make_release_branch(
-            task_key=task_key,
             release_set=release_set,
-            release_version=release_version)
+            release_version=release_version,
+            release_project=release_project)
         print('Made release branch')
 
     if Command.PREPARE in commands or Command.MAKE_RELATIONS in commands:
         assert task_key
-        assert task_re
+        assert api_client.github_repository
+
         relations = get_related_tasks(
-            task_key=task_key,
-            api_client=api_client,
-            task_re=task_re)
+            github_repository=api_client.github_repository,
+            task_re=task_re,
+            release_project=release_project,
+            release_version=release_version
+        )
 
         if relations.left_pulls:
             sys.stderr.write('Pull requests without tasks: {}\n'.format(
@@ -242,7 +249,7 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
             exit(1)
 
         make_links(
-            api_client=api_client,
+            jira_client=api_client.jira,
             task_key=task_key,
             related_keys=relations.tasks)
 
@@ -253,13 +260,12 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
             exit(1)
 
     if Command.MERGE_RELEASE in commands:
-        assert task_key
         assert api_client.github_repository
-        assert release_get
+
         merge_release(
-            task_key=task_key,
-            api_client=api_client,
-            release_get=release_get
+            github_repository=api_client.github_repository,
+            release_project=release_project,
+            release_version=release_version
         )
 
 
@@ -329,5 +335,4 @@ if __name__ == '__main__':
         release_project=_args.jira_release_project,
         release_version=_args.release_version,
         release_set=_args.release_set,
-        release_get=_args.release_get,
     )
