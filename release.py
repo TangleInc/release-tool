@@ -22,7 +22,7 @@ class Command:
     MERGE_RELEASE = 'merge-release'
 
 
-PR_RE = re.compile(r'\(#(\d+)\)', flags=re.U | re.I)
+PR_RE = re.compile(r'#(\d+)', flags=re.U | re.I)
 REPO_RE = re.compile(r'[/:](\w+/\w+)\.git')
 
 ARGUMENTS = (
