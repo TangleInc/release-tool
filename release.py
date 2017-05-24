@@ -20,6 +20,8 @@ class Command:
     MAKE_RELATIONS = 'make-relations'
 
     MERGE_RELEASE = 'merge-release'
+    MERGE_TO_MASTER = 'merge-to-master'
+    MERGE_MASTER_TO_DEVELOP = 'merge-master-to-develop'
 
 
 PR_RE = re.compile(r'#(\d+)', flags=re.U | re.I)
@@ -30,7 +32,7 @@ ARGUMENTS = (
     'github-user',
     'jira-password',
     'jira-project',
-    'jira-release-project'
+    'jira-release-project',
     'jira-server',
     'jira-task-extra',
     'jira-user',
@@ -143,7 +145,7 @@ def make_release_branch(release_set, release_version, release_project):
     )
 
 
-def merge_release(github_repository, release_project, release_version):
+def merge_release_to_master(release_project, release_version):
     git_fetch()
     branch = get_branch_name(
         release_project=release_project,
@@ -151,7 +153,7 @@ def merge_release(github_repository, release_project, release_version):
 
     execute_commands(
         [
-            'git checkout origin/{branch}'
+            'git checkout origin/{branch}',
             'git tag {version}',
             'git push origin {version}',
             'git checkout master',
@@ -164,11 +166,16 @@ def merge_release(github_repository, release_project, release_version):
         version=release_version
     )
 
-    github_repository.create_pull(
-        title='Release {version}'.format(version=release_version),
-        body='',
-        base='develop',
-        head='master'
+
+def merge_master_to_develop():
+    git_fetch()
+    execute_commands(
+        [
+            'git checkout develop',
+            'git reset --hard origin/develop',
+            'git merge --no-ff origin/master -m "Merge origin/master"',
+            'git push origin develop',
+        ]
     )
 
 
@@ -255,14 +262,14 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
         if relations.left_pulls:
             exit(1)
 
-    if Command.MERGE_RELEASE in commands:
-        assert api_client.github_repository
-
-        merge_release(
-            github_repository=api_client.github_repository,
+    if Command.MERGE_RELEASE in commands or Command.MERGE_TO_MASTER in commands:
+        merge_release_to_master(
             release_project=release_project,
             release_version=release_version
         )
+
+    if Command.MERGE_RELEASE in commands or Command.MERGE_MASTER_TO_DEVELOP in commands:
+        merge_master_to_develop()
 
 
 def parse_args():
@@ -275,10 +282,12 @@ def parse_args():
             Command.MAKE_TASK,
             Command.MAKE_BRANCH,
             Command.MAKE_RELATIONS,
-            Command.MERGE_RELEASE
+            Command.MERGE_RELEASE,
+            Command.MERGE_TO_MASTER,
+            Command.MERGE_MASTER_TO_DEVELOP
         ])
     parser.add_argument('--task')
-    parser.add_argument('--release-version')
+    parser.add_argument('--version')
     parser.add_argument('--config')
 
     for arg in ARGUMENTS:
@@ -329,6 +338,6 @@ if __name__ == '__main__':
         task_key=_release_task,
         task_re=_task_re,
         release_project=_args.jira_release_project,
-        release_version=_args.release_version,
+        release_version=_args.version,
         release_set=_args.release_set,
     )
