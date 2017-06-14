@@ -134,7 +134,7 @@ def make_release_branch(release_set, release_version, release_project):
             'git checkout origin/develop',
             'git checkout -b {branch}',
             '{release_set} {release_version}',
-            'git commit -am "Release {release_version}"',
+            'git commit --allow-empty -am "Release {release_version}"',
             'git push origin {branch}'
         ],
         branch=get_branch_name(
