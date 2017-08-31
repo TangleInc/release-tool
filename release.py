@@ -39,7 +39,7 @@ ARGUMENTS = (
     'jira-task-extra',
     'jira-user',
     'release-set',
-    'pull'
+    'pr'
 )
 
 GetTaskResponse = namedtuple('GetTaskResponse', ('tasks', 'left_pulls'))
@@ -148,7 +148,7 @@ def make_release_branch(release_set, release_version, release_project):
     )
 
 
-def make_hotfix_branch(github_repository, release_set, release_version, release_project, pulls):
+def make_hotfix_branch(github_repository, release_set, release_version, release_project, prs):
     git_fetch()
     commands = [
         'git checkout origin/master',
@@ -156,7 +156,7 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
         '{release_set} {release_version}',
     ]
 
-    for pr in pulls:
+    for pr in prs:
         pull = github_repository.get_pull(pr)
         assert pull.merge_commit_sha
         commands.append(
@@ -241,7 +241,7 @@ class API:
 
 
 def run(commands, api_client, jira_task_extra, task_key, task_re, release_project,
-        release_version, release_set, pulls):
+        release_version, release_set, prs):
 
     assert release_project
     assert release_version
@@ -273,7 +273,7 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
             release_set=release_set,
             release_version=release_version,
             release_project=release_project,
-            pulls=pulls
+            prs=prs
         )
 
     if {Command.PREPARE, Command.MAKE_LINKS, Command.HOTFIX} & set_commands:
@@ -343,7 +343,7 @@ def parse_args():
                 '--{}'.format(arg),
                 type=lambda value: json.loads(value),
                 help='Something like \'{"component": "Backend"}\'')
-        elif arg == 'pull':
+        elif arg == 'pr':
             parser.add_argument(
                 '--{}'.format(arg),
                 action='append',
@@ -388,7 +388,7 @@ if __name__ == '__main__':
     assert (
         Command.HOTFIX in _args.commands
         or Command.MAKE_HOTFIX_BRANCH in _args.commands
-        or not _args.pull
+        or not _args.pr
     )
 
     run(
@@ -400,5 +400,5 @@ if __name__ == '__main__':
         release_project=_args.jira_release_project,
         release_version=_args.version,
         release_set=_args.release_set,
-        pulls=_args.pull,
+        prs=_args.pr,
     )
