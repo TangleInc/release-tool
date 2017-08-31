@@ -15,9 +15,11 @@ from jira import JIRA
 
 class Command:
     PREPARE = 'prepare'
+    HOTFIX = 'hotfix'
     MAKE_TASK = 'make-task'
     MAKE_BRANCH = 'make-branch'
-    MAKE_RELATIONS = 'make-relations'
+    MAKE_HOTFIX_BRANCH = 'make-hotfix-branch'
+    MAKE_LINKS = 'make-links'
 
     MERGE_RELEASE = 'merge-release'
     MERGE_TO_MASTER = 'merge-to-master'
@@ -37,6 +39,7 @@ ARGUMENTS = (
     'jira-task-extra',
     'jira-user',
     'release-set',
+    'pull'
 )
 
 GetTaskResponse = namedtuple('GetTaskResponse', ('tasks', 'left_pulls'))
@@ -145,6 +148,35 @@ def make_release_branch(release_set, release_version, release_project):
     )
 
 
+def make_hotfix_branch(github_repository, release_set, release_version, release_project, pulls):
+    git_fetch()
+    commands = [
+        'git checkout origin/master',
+        'git checkout -b {branch}',
+        '{release_set} {release_version}',
+    ]
+
+    for pr in pulls:
+        pull = github_repository.get_pull(pr)
+        assert pull.merge_commit_sha
+        commands.append(
+            'git cherry-pick {}'.format(pull.merge_commit_sha)
+        )
+
+    commands.extend([
+        'git commit --allow-empty -am "Release {release_version}"',
+        'git push origin {branch}'
+    ])
+
+    execute_commands(
+        commands,
+        branch=get_branch_name(
+            release_project=release_project,
+            version=release_version),
+        release_set=release_set,
+        release_version=release_version
+    )
+
 def merge_release_to_master(release_project, release_version):
     git_fetch()
     branch = get_branch_name(
@@ -209,13 +241,15 @@ class API:
 
 
 def run(commands, api_client, jira_task_extra, task_key, task_re, release_project,
-        release_version, release_set):
+        release_version, release_set, pulls):
 
     assert release_project
     assert release_version
     assert task_re
 
-    if Command.PREPARE in commands or Command.MAKE_TASK in commands:
+    set_commands = set(commands)
+
+    if {Command.PREPARE, Command.HOTFIX, Command.MAKE_TASK} & set_commands:
         task_key = make_release_task(
             jira_client=api_client.jira,
             extra_fields=jira_task_extra,
@@ -223,15 +257,26 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
             release_version=release_version)
         print('Made new task: {}'.format(task_key))
 
-    if Command.PREPARE in commands or Command.MAKE_BRANCH in commands:
+    if {Command.PREPARE, Command.MAKE_BRANCH} & set_commands:
         assert release_set
         make_release_branch(
             release_set=release_set,
             release_version=release_version,
-            release_project=release_project)
+            release_project=release_project
+        )
         print('Made release branch')
 
-    if Command.PREPARE in commands or Command.MAKE_RELATIONS in commands:
+    if {Command.HOTFIX, Command.MAKE_HOTFIX_BRANCH} & set_commands:
+        assert api_client.github_repository
+        make_hotfix_branch(
+            github_repository=api_client.github_repository,
+            release_set=release_set,
+            release_version=release_version,
+            release_project=release_project,
+            pulls=pulls
+        )
+
+    if {Command.PREPARE, Command.MAKE_LINKS, Command.HOTFIX} & set_commands:
         assert task_key
         assert api_client.github_repository
 
@@ -262,13 +307,13 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
         if relations.left_pulls:
             exit(1)
 
-    if Command.MERGE_RELEASE in commands or Command.MERGE_TO_MASTER in commands:
+    if {Command.MERGE_RELEASE, Command.MERGE_TO_MASTER} & set_commands:
         merge_release_to_master(
             release_project=release_project,
             release_version=release_version
         )
 
-    if Command.MERGE_RELEASE in commands or Command.MERGE_MASTER_TO_DEVELOP in commands:
+    if {Command.MERGE_RELEASE, Command.MERGE_MASTER_TO_DEVELOP} & set_commands:
         merge_master_to_develop()
 
 
@@ -279,12 +324,14 @@ def parse_args():
         nargs='+',
         choices=[
             Command.PREPARE,
+            Command.HOTFIX,
             Command.MAKE_TASK,
             Command.MAKE_BRANCH,
-            Command.MAKE_RELATIONS,
+            Command.MAKE_HOTFIX_BRANCH,
+            Command.MAKE_LINKS,
             Command.MERGE_RELEASE,
             Command.MERGE_TO_MASTER,
-            Command.MERGE_MASTER_TO_DEVELOP
+            Command.MERGE_MASTER_TO_DEVELOP,
         ])
     parser.add_argument('--task')
     parser.add_argument('--version')
@@ -296,6 +343,13 @@ def parse_args():
                 '--{}'.format(arg),
                 type=lambda value: json.loads(value),
                 help='Something like \'{"component": "Backend"}\'')
+        elif arg == 'pull':
+            parser.add_argument(
+                '--{}'.format(arg),
+                action='append',
+                type=int,
+                help='Github pull request for hotfix release'
+            )
         else:
             parser.add_argument('--{}'.format(arg))
 
@@ -331,6 +385,12 @@ if __name__ == '__main__':
 
     _release_task = _args.task.upper() if _args.task else None
     _task_re = re.compile(r'({}-\d+)\s'.format(_args.jira_project), flags=re.U | re.I)
+    assert (
+        Command.HOTFIX in _args.commands
+        or Command.MAKE_HOTFIX_BRANCH in _args.commands
+        or not _args.pull
+    )
+
     run(
         commands=_args.commands,
         api_client=API(_args),
@@ -340,4 +400,5 @@ if __name__ == '__main__':
         release_project=_args.jira_release_project,
         release_version=_args.version,
         release_set=_args.release_set,
+        pulls=_args.pull,
     )
