@@ -1,4 +1,4 @@
-#!env/bin/python
+#!/usr/bin/env python
 
 import argparse
 import json
@@ -174,6 +174,7 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
         release_set=release_set,
         release_version=release_version
     )
+
 
 def merge_release_to_master(release_project, release_version):
     git_fetch()
