@@ -134,8 +134,7 @@ def make_release_branch(release_set, release_version, release_project):
     git_fetch()
     execute_commands(
         [
-            'git checkout origin/develop',
-            'git checkout -b {branch}',
+            'git checkout -b {branch} origin/develop',
             '{release_set} {release_version}',
             'git commit --allow-empty -am "Release {release_version}"',
             'git push origin {branch}'
@@ -151,8 +150,7 @@ def make_release_branch(release_set, release_version, release_project):
 def make_hotfix_branch(github_repository, release_set, release_version, release_project, prs):
     git_fetch()
     commands = [
-        'git checkout origin/master',
-        'git checkout -b {branch}',
+        'git checkout -b {branch} origin/master',
         '{release_set} {release_version}',
     ]
 
