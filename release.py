@@ -188,7 +188,7 @@ def merge_release_to_master(release_project, release_version):
             'git push origin {version}',
             'git checkout master',
             'git reset --hard origin/master',
-            'git merge --no-ff origin/{branch} -m "Merge origin/{branch}"',
+            'git merge --commit --no-ff origin/{branch} -m "Merge origin/{branch}"',
             'git push origin master',
             'git push origin :{branch}'
         ],
@@ -203,7 +203,7 @@ def merge_master_to_develop():
         [
             'git checkout develop',
             'git reset --hard origin/develop',
-            'git merge --no-ff origin/master -m "Merge origin/master"',
+            'git merge --commit --no-ff origin/master -m "Merge origin/master"',
             'git push origin develop',
         ]
     )
