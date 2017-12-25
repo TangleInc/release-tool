@@ -4,17 +4,27 @@ Release Tool
 
 # Init
 ```bash
-git clone git@github.com:megabuz/release-tool.git ../release-tool
-pip install -r ../release-tool/requirements.txt
+mkdir $PROJECT_ROOT && cd $PROJECT_ROOT                                 # create a project dir and enter
+git clone git@github.com:TangleInc/release-tool.git ../release-tool     # clone the project
+python3 -m venv ./env && source ./env/bin/activate                      # create and activate virtual env
+pip install -r ./requirements.txt                                       # install requirements
 ```
 
-now you can use
+You need to create a config and provide your auth and other info there in order to login to Github and Jira.
 
 ```bash
-python ../release-tool/release.py --config=../release-tool/release.yml [command]
+cp config-stub.yml config.yml                                           # create a personal config
+open config.yml
 ```
 
-or make aliases to use it like this `./release --config=release.yml [command]`
+Now you do the magic!
+
+```bash
+source ./env/bin/activate
+python ./release.py --config=./config.yml [command]
+```
+
+Or even better — make aliases to use it like this `./release --config=config.yml [command]`
 
 ```bash
 ln -s ../release-tool/release.py release
@@ -28,31 +38,42 @@ cp ../release-tool/release.yml .
 
 # Usage
 
-## 1. New release
+**Important:** during release creation the script alerts you about pull requests not linked to any task. You need to check these PRs manually to ensure everything is OK.
+
+## New full branch release
+
+Make a release branch from the entire `develop`.
+
 ```bash
-./release --config=release.yml --version=X.Y.Z prepare
+./release --config=config.yml --version=X.Y.Z prepare
 ```
 
-## 2. Hotfix
+## New specific commits release
+
+Cherry pick specified pull requests using their numbers to a release branch.
+
 ```bash
-./release --config=release.yml --version=X.Y.Z hotfix --pr=XXX --pr=...
+./release --config=config.yml --version=X.Y.Z hotfix --pr=XXX --pr=...
 ```
 
-## 3. Merge
+## Merge
+
+Merge a release branch to master, mark the merge commit with a tag and merge `master` to `develop`.
+
 ```bash
-./release --config=release.yml --version=X.Y.Z merge-release
+./release --config=config.yml --version=X.Y.Z merge-release
 ```
 
-## 4. Manual
+## Manual
 ```bash
-./release --config=release.yml --version=X.Y.Z make-task
+./release --config=config.yml --version=X.Y.Z make-task
 
 # release / hotfix
-./release --config=release.yml --version=X.Y.Z make-branch
-./release --config=release.yml --version=X.Y.Z make-hotfix-branch --pr=XXX --pr=...
+./release --config=config.yml --version=X.Y.Z make-branch
+./release --config=config.yml --version=X.Y.Z make-hotfix-branch --pr=XXX --pr=...
 
-./release --config=release.yml --version=X.Y.Z make-relations --task=XXX
+./release --config=config.yml --version=X.Y.Z make-links --task=XXX
 
-./release --config=release.yml --version=X.Y.Z merge-to-master
-./release --config=release.yml --version=X.Y.Z merge-master-to-develop
+./release --config=config.yml --version=X.Y.Z merge-to-master
+./release --config=config.yml --version=X.Y.Z merge-master-to-develop
 ```
