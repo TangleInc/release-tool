@@ -1,0 +1,11 @@
+github-user: XXX
+github-password: XXX
+jira-server: https://tangle.atlassian.net
+jira-user: XXX
+jira-password: XXX
+jira-project: BAC
+jira-release-project: RELEASE
+origin-branch: master
+jira-task-extra:
+  component: Backend
+release-set: echo
