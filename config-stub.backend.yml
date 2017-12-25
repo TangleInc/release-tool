@@ -8,4 +8,4 @@ jira-release-project: RELEASE
 origin-branch: master
 jira-task-extra:
   component: Backend
-release-set: yarn version --no-git-tag-version --new-version
+release-set: echo
