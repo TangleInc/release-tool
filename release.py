@@ -137,7 +137,7 @@ def make_release_branch(release_set, release_version, release_project):
             'git checkout -b {branch} --no-track origin/develop',
             '{release_set} {release_version}',
             'git commit --allow-empty -am "Release {release_version}"',
-            'git push origin {branch}'
+            'git push -u origin {branch}'
         ],
         branch=get_branch_name(
             release_project=release_project,
@@ -163,7 +163,7 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
 
     commands.extend([
         'git commit --allow-empty -am "Release {release_version}"',
-        'git push origin {branch}'
+        'git push -u origin {branch}'
     ])
 
     execute_commands(
@@ -347,6 +347,7 @@ def parse_args():
                 '--{}'.format(arg),
                 action='append',
                 type=int,
+                default=(),
                 help='Github pull request for hotfix release'
             )
         else:
