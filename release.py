@@ -347,7 +347,7 @@ def parse_args():
                 '--{}'.format(arg),
                 action='append',
                 type=int,
-                default=(),
+                default=[],
                 help='Github pull request for hotfix release'
             )
         else:
