@@ -59,10 +59,11 @@ def get_pr_task(github_repository, pr, task_re):
 
 
 def execute_commands(commands, **format_kwargs):
-    return subprocess.check_output(
-        (' && '.join(commands)).format(**format_kwargs),
-        shell=True
-    )
+    for command in commands:
+        subprocess.check_output(
+            command.format(**format_kwargs),
+            shell=True
+        )
 
 
 def get_related_tasks(github_repository, task_re, release_project, release_version):
@@ -150,6 +151,7 @@ def make_release_branch(release_set, release_version, release_project):
 def make_hotfix_branch(github_repository, release_set, release_version, release_project, prs):
     git_fetch()
     commands = [
+        'git commit --allow-empty -am "Release {release_version}"',
         'git checkout -b {branch} --no-track origin/master',
         '{release_set} {release_version}',
     ]
@@ -162,7 +164,6 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
         )
 
     commands.extend([
-        'git commit --allow-empty -am "Release {release_version}"',
         'git push -u origin {branch}'
     ])
 
