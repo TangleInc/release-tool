@@ -242,8 +242,8 @@ class API:
 def run(commands, api_client, jira_task_extra, task_key, task_re, release_project,
         release_version, release_set, prs):
 
-    assert release_project
-    assert release_version
+    assert release_project, "`jira-release-project` is not provided"
+    assert release_version, "`version` is not provided"
     assert task_re
 
     set_commands = set(commands)
@@ -381,7 +381,7 @@ def parse_and_combine_args():
 
 if __name__ == '__main__':
     _args = parse_and_combine_args()
-    assert _args.jira_project
+    assert _args.jira_project, "`jira-project` is not passed"
 
     _release_task = _args.task.upper() if _args.task else None
     _task_re = re.compile(r'({}-\d+)\s'.format(_args.jira_project), flags=re.U | re.I)
