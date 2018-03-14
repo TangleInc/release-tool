@@ -59,10 +59,11 @@ def get_pr_task(github_repository, pr, task_re):
 
 
 def execute_commands(commands, **format_kwargs):
-    return subprocess.check_output(
-        (' && '.join(commands)).format(**format_kwargs),
-        shell=True
-    )
+    for command in commands:
+        subprocess.check_output(
+            command.format(**format_kwargs),
+            shell=True
+        )
 
 
 def get_related_tasks(github_repository, task_re, release_project, release_version):
@@ -150,6 +151,7 @@ def make_release_branch(release_set, release_version, release_project):
 def make_hotfix_branch(github_repository, release_set, release_version, release_project, prs):
     git_fetch()
     commands = [
+        'git commit --allow-empty -am "Release {release_version}"',
         'git checkout -b {branch} --no-track origin/master',
         '{release_set} {release_version}',
     ]
@@ -162,7 +164,6 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
         )
 
     commands.extend([
-        'git commit --allow-empty -am "Release {release_version}"',
         'git push -u origin {branch}'
     ])
 
@@ -242,8 +243,8 @@ class API:
 def run(commands, api_client, jira_task_extra, task_key, task_re, release_project,
         release_version, release_set, prs):
 
-    assert release_project
-    assert release_version
+    assert release_project, "`jira-release-project` is not provided"
+    assert release_version, "`version` is not provided"
     assert task_re
 
     set_commands = set(commands)
@@ -381,7 +382,7 @@ def parse_and_combine_args():
 
 if __name__ == '__main__':
     _args = parse_and_combine_args()
-    assert _args.jira_project
+    assert _args.jira_project, "`jira-project` is not passed"
 
     _release_task = _args.task.upper() if _args.task else None
     _task_re = re.compile(r'({}-\d+)\s'.format(_args.jira_project), flags=re.U | re.I)
