@@ -367,6 +367,8 @@ def parse_and_combine_args():
     config = None
     if args.config:
         config = parse_config(args.config)
+        jira_server = config['jira-server']
+        config['jira-server'] = 'https://{}'.format(jira_server) if 'http' not in jira_server else jira_server
     if not config:
         return args
 
