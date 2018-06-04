@@ -1,5 +1,4 @@
-github-user: XXX
-github-password: XXX
+github-token: XXX
 jira-server: https://tangle.atlassian.net
 jira-user: XXX
 jira-password: XXX
