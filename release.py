@@ -30,8 +30,7 @@ PR_RE = re.compile(r'#(\d+)', flags=re.U | re.I)
 REPO_RE = re.compile(r'[/:](\w+/\w+)\.git')
 
 ARGUMENTS = (
-    'github-password',
-    'github-user',
+    'github-token',
     'jira-password',
     'jira-project',
     'jira-release-project',
@@ -227,9 +226,8 @@ class API:
 
     @cached_property
     def github(self):
-        assert self._args.github_user
-        assert self._args.github_password
-        return Github(self._args.github_user, self._args.github_password)
+        assert self._args.github_token
+        return Github(self._args.github_token)
 
     @cached_property
     def github_repository(self):

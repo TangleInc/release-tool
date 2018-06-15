@@ -12,6 +12,9 @@ pip install -r ./requirements.txt                                       # instal
 
 You need to create a config and provide your auth and other info there in order to login to Github and Jira.
 
+To get Github token `Settings` -> `Developer settings` -> `Personal access tokens` -> `Generate new token`
+select option repo: `Full control of private repositories`
+
 ```bash
 cp config-stub.yml config.yml                                           # create a personal config
 open config.yml
