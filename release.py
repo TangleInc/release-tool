@@ -150,9 +150,9 @@ def make_release_branch(release_set, release_version, release_project):
 def make_hotfix_branch(github_repository, release_set, release_version, release_project, prs):
     git_fetch()
     commands = [
-        'git commit --allow-empty -m "Release {release_version}"',
         'git checkout -b {branch} --no-track origin/master',
         '{release_set} {release_version}',
+        'git commit --allow-empty -m "Release {release_version}"',
     ]
 
     for pr in prs:
