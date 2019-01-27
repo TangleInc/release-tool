@@ -152,7 +152,6 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
     commands = [
         'git checkout -b {branch} --no-track origin/master',
         '{release_set} {release_version}',
-        'git commit --allow-empty -m "Release {release_version}"',
     ]
 
     for pr in prs:
@@ -163,7 +162,8 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
         )
 
     commands.extend([
-        'git push -u origin {branch}'
+        'git commit --allow-empty -m "Release {release_version}"',
+        'git push -u origin {branch}',
     ])
 
     execute_commands(
