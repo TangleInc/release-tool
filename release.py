@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 from collections import namedtuple
+from typing import NamedTuple, List
 
 import yaml
 from cached_property import cached_property
@@ -41,7 +42,10 @@ ARGUMENTS = (
     'pr'
 )
 
-GetTaskResponse = namedtuple('GetTaskResponse', ('tasks', 'left_pulls'))
+
+class GetTaskResponse(NamedTuple):
+    tasks: List[str]
+    pull_requests_without_task: List[int]
 
 
 def git_fetch():
@@ -96,7 +100,7 @@ def get_related_tasks(github_repository, task_re, release_project, release_versi
 
     return GetTaskResponse(
         tasks=list(sorted(all_tasks)),
-        left_pulls=list(sorted(left_pulls))
+        pull_requests_without_task=list(sorted(left_pulls))
     )
 
 
@@ -285,9 +289,9 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
             release_version=release_version
         )
 
-        if relations.left_pulls:
+        if relations.pull_requests_without_task:
             sys.stderr.write('Pull requests without tasks: {}\n'.format(
-                ', '.join(map(str, relations.left_pulls))
+                ', '.join(map(str, relations.pull_requests_without_task))
             ))
 
         if not relations.tasks:
@@ -302,7 +306,7 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
         print('Made links from {} to {}'.format(
             task_key, ', '.join(relations.tasks)))
 
-        if relations.left_pulls:
+        if relations.pull_requests_without_task:
             exit(1)
 
     if {Command.MERGE_RELEASE, Command.MERGE_TO_MASTER} & set_commands:
