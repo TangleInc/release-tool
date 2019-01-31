@@ -21,6 +21,7 @@ class Command:
     MAKE_HOTFIX_BRANCH = 'make-hotfix-branch'
     MAKE_LINKS = 'make-links'
 
+    PREPARE_TOKEN_REMOTE = 'prepare-remote'
     MERGE_RELEASE = 'merge-release'
     MERGE_TO_MASTER = 'merge-to-master'
     MERGE_MASTER_TO_DEVELOP = 'merge-master-to-develop'
@@ -30,6 +31,7 @@ PR_RE = re.compile(r'#(\d+)', flags=re.U | re.I)
 REPO_RE = re.compile(r'[/:](\w+/\w+)\.git')
 
 ARGUMENTS = (
+    'github-user',
     'github-token',
     'jira-password',
     'jira-project',
@@ -42,6 +44,8 @@ ARGUMENTS = (
 )
 
 GetTaskResponse = namedtuple('GetTaskResponse', ('tasks', 'left_pulls'))
+
+remote_name = 'token-origin'
 
 
 def git_fetch():
@@ -175,6 +179,27 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
         release_version=release_version
     )
 
+def prepare_token_remote(api_client, github_user):
+    try:
+        print('Checking if a token remote exists...')
+        command = 'git remote -v | grep {remote_name}'.format(remote_name=remote_name)
+        subprocess.check_output(command, shell=True)
+        print('The remote exists.')
+    except subprocess.CalledProcessError:
+        print('The remote does not exist. Creating...')
+        remote_url = 'https://{github_username}:{github_token}@github.com/{repo_name}.git'.format(
+            github_username=github_user.username,
+            github_token=github_user.token,
+            repo_name=api_client.github_repo_name
+        )
+
+        command = 'git remote add {remote_name} "{remote_url}"'.format(
+            remote_name=remote_name,
+            remote_url=remote_url
+        )
+        subprocess.check_output(command, shell=True)
+        print('The remote has been created successfully.')
+
 
 def merge_release_to_master(release_project, release_version):
     git_fetch()
@@ -186,15 +211,16 @@ def merge_release_to_master(release_project, release_version):
         [
             'git checkout origin/{branch}',
             'git tag {version}',
-            'git push origin {version}',
+            'git push {remote_name} {version}',
             'git checkout master',
             'git reset --hard origin/master',
             'git merge --commit --no-ff origin/{branch} -m "Merge origin/{branch}"',
-            'git push origin master',
-            'git push origin :{branch}'
+            'git push {remote_name} master',
+            'git push {remote_name} :{branch}'
         ],
         branch=branch,
-        version=release_version
+        version=release_version,
+        remote_name=remote_name
     )
 
 
@@ -205,9 +231,23 @@ def merge_master_to_develop():
             'git checkout develop',
             'git reset --hard origin/develop',
             'git merge --commit --no-ff origin/master -m "Merge origin/master"',
-            'git push origin develop',
-        ]
+            'git push {remote_name} develop',
+        ],
+        remote_name=remote_name
     )
+
+
+class GithubUser:
+    def __init__(self, arguments):
+        self._args = arguments
+
+    @cached_property
+    def username(self):
+        return self._args.github_user
+
+    @cached_property
+    def token(self):
+        return self._args.github_token
 
 
 class API:
@@ -230,16 +270,20 @@ class API:
         return Github(self._args.github_token)
 
     @cached_property
-    def github_repository(self):
+    def github_repo_name(self):
         github_repo_match = REPO_RE.search(
             subprocess.check_output('git remote -v', shell=True).decode('utf-8')
         )
         assert github_repo_match
-        return self.github.get_repo(github_repo_match.group(1))
+        return github_repo_match.group(1)
+
+    @cached_property
+    def github_repository(self):
+        return self.github.get_repo(github_repo_name.github_repo_name)
 
 
-def run(commands, api_client, jira_task_extra, task_key, task_re, release_project,
-        release_version, release_set, prs):
+def run(commands, api_client, jira_task_extra, task_key, task_re,
+        release_project, release_version, release_set, prs, github_user):
 
     assert release_project, "`jira-release-project` is not provided"
     assert release_version, "`version` is not provided"
@@ -305,6 +349,12 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
         if relations.left_pulls:
             exit(1)
 
+    if {Command.PREPARE_TOKEN_REMOTE, Command.MERGE_RELEASE, Command.MERGE_TO_MASTER} & set_commands:
+        prepare_token_remote(
+            api_client=api_client,
+            github_user=github_user
+        )
+
     if {Command.MERGE_RELEASE, Command.MERGE_TO_MASTER} & set_commands:
         merge_release_to_master(
             release_project=release_project,
@@ -327,6 +377,7 @@ def parse_args():
             Command.MAKE_BRANCH,
             Command.MAKE_HOTFIX_BRANCH,
             Command.MAKE_LINKS,
+            Command.PREPARE_TOKEN_REMOTE,
             Command.MERGE_RELEASE,
             Command.MERGE_TO_MASTER,
             Command.MERGE_MASTER_TO_DEVELOP,
@@ -402,4 +453,5 @@ if __name__ == '__main__':
         release_version=_args.version,
         release_set=_args.release_set,
         prs=_args.pr,
+        github_user=GithubUser(_args),
     )
