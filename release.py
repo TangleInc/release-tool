@@ -5,13 +5,14 @@ import json
 import re
 import subprocess
 import sys
-from collections import namedtuple
 from typing import NamedTuple, List
 
 import yaml
 from cached_property import cached_property
 from github import Github
 from jira import JIRA
+
+import git
 
 
 class Command:
@@ -39,17 +40,13 @@ ARGUMENTS = (
     'jira-task-extra',
     'jira-user',
     'release-set',
-    'pr'
+    'pr',
 )
 
 
 class GetTaskResponse(NamedTuple):
     tasks: List[str]
     pull_requests_without_task: List[int]
-
-
-def git_fetch():
-    subprocess.check_call('git fetch', shell=True, stdout=subprocess.PIPE)
 
 
 def get_branch_name(release_project, version):
@@ -61,16 +58,8 @@ def get_pr_task(github_repository, pr, task_re):
     return task_re.findall(pull.title)
 
 
-def execute_commands(commands, **format_kwargs):
-    for command in commands:
-        subprocess.check_output(
-            command.format(**format_kwargs),
-            shell=True
-        )
-
-
 def get_related_tasks(github_repository, task_re, release_project, release_version):
-    git_fetch()
+    git.GitFuncs.fetch()()
     commit_messages = subprocess.check_output(
         'git log origin/master..origin/{} --pretty=%B'.format(
             get_branch_name(
@@ -134,86 +123,6 @@ def make_release_task(jira_client, extra_fields, release_project, release_versio
     return issue.key
 
 
-def make_release_branch(release_set, release_version, release_project):
-    git_fetch()
-    execute_commands(
-        [
-            'git checkout -b {branch} --no-track origin/develop',
-            '{release_set} {release_version}',
-            'git commit --allow-empty -m "Release {release_version}"',
-            'git push -u origin {branch}'
-        ],
-        branch=get_branch_name(
-            release_project=release_project,
-            version=release_version),
-        release_set=release_set,
-        release_version=release_version
-    )
-
-
-def make_hotfix_branch(github_repository, release_set, release_version, release_project, prs):
-    git_fetch()
-    commands = [
-        'git checkout -b {branch} --no-track origin/master',
-        '{release_set} {release_version}',
-    ]
-
-    for pr in prs:
-        pull = github_repository.get_pull(pr)
-        assert pull.merge_commit_sha
-        commands.append(
-            'git cherry-pick {}'.format(pull.merge_commit_sha)
-        )
-
-    commands.extend([
-        'git commit --allow-empty -m "Release {release_version}"',
-        'git push -u origin {branch}',
-    ])
-
-    execute_commands(
-        commands,
-        branch=get_branch_name(
-            release_project=release_project,
-            version=release_version),
-        release_set=release_set,
-        release_version=release_version
-    )
-
-
-def merge_release_to_master(release_project, release_version):
-    git_fetch()
-    branch = get_branch_name(
-        release_project=release_project,
-        version=release_version)
-
-    execute_commands(
-        [
-            'git checkout origin/{branch}',
-            'git tag {version}',
-            'git push origin {version}',
-            'git checkout master',
-            'git reset --hard origin/master',
-            'git merge --commit --no-ff origin/{branch} -m "Merge origin/{branch}"',
-            'git push origin master',
-            'git push origin :{branch}'
-        ],
-        branch=branch,
-        version=release_version
-    )
-
-
-def merge_master_to_develop():
-    git_fetch()
-    execute_commands(
-        [
-            'git checkout develop',
-            'git reset --hard origin/develop',
-            'git merge --commit --no-ff origin/master -m "Merge origin/master"',
-            'git push origin develop',
-        ]
-    )
-
-
 class API:
     def __init__(self, arguments):
         self._args = arguments
@@ -249,6 +158,11 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
     assert release_version, "`version` is not provided"
     assert task_re
 
+    git_flows = git.GitFlows(
+        version=release_version,
+        release_branch_template=f'{release_project.lower()}-{{version}}'
+    )
+
     set_commands = set(commands)
 
     if {Command.PREPARE, Command.HOTFIX, Command.MAKE_TASK} & set_commands:
@@ -261,22 +175,27 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
 
     if {Command.PREPARE, Command.MAKE_BRANCH} & set_commands:
         assert release_set
-        make_release_branch(
-            release_set=release_set,
-            release_version=release_version,
-            release_project=release_project
-        )
+        git_flows.make_release_branch(release_set=release_set)
         print('Made release branch')
 
     if {Command.HOTFIX, Command.MAKE_HOTFIX_BRANCH} & set_commands:
         assert api_client.github_repository
-        make_hotfix_branch(
-            github_repository=api_client.github_repository,
-            release_set=release_set,
-            release_version=release_version,
-            release_project=release_project,
-            prs=prs
+
+        pulls = (
+            api_client.github_repository.get_pull(pr)
+            for pr in prs
         )
+        list_of_commit_sha = (
+            pull.merge_commit_sha
+            for pull in pulls
+            if pull.merge_commit_sha
+        )
+
+        git_flows.make_hotfix_branch(
+            list_of_commit_sha=list_of_commit_sha,
+            release_set=release_set,
+        )
+        print('Made hotfix branch')
 
     if {Command.PREPARE, Command.MAKE_LINKS, Command.HOTFIX} & set_commands:
         assert task_key
@@ -310,13 +229,10 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
             exit(1)
 
     if {Command.MERGE_RELEASE, Command.MERGE_TO_MASTER} & set_commands:
-        merge_release_to_master(
-            release_project=release_project,
-            release_version=release_version
-        )
+        git_flows.merge_release_to_master()
 
     if {Command.MERGE_RELEASE, Command.MERGE_MASTER_TO_DEVELOP} & set_commands:
-        merge_master_to_develop()
+        git_flows.merge_master_to_develop()
 
 
 def parse_args():
@@ -378,8 +294,9 @@ def parse_and_combine_args():
         if name not in config:
             continue
 
-        if getattr(args, name.replace('-', '_')) is None:
-            setattr(args, name.replace('-', '_'), config[name])
+        name_snake_cased = name.replace('-', '_')
+        if getattr(args, name_snake_cased) is None:
+            setattr(args, name_snake_cased, config[name])
 
     return args
 
