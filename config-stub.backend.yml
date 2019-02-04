@@ -7,4 +7,4 @@ jira-release-project: RELEASE
 origin-branch: master
 jira-task-extra:
   component: Backend
-release-set: echo
+release-set: echo {version}
