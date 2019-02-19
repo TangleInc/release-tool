@@ -279,7 +279,7 @@ class API:
 
     @cached_property
     def github_repository(self):
-        return self.github.get_repo(github_repo_name.github_repo_name)
+        return self.github.get_repo(self.github_repo_name)
 
 
 def run(commands, api_client, jira_task_extra, task_key, task_re,
