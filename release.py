@@ -17,6 +17,7 @@ class Command:
     PREPARE = 'prepare'
     HOTFIX = 'hotfix'
     MAKE_TASK = 'make-task'
+    MARK_TASK_DONE = 'mark-task-done'
     MAKE_BRANCH = 'make-branch'
     MAKE_HOTFIX_BRANCH = 'make-hotfix-branch'
     MAKE_LINKS = 'make-links'
@@ -128,6 +129,44 @@ def make_release_task(jira_client, extra_fields, release_project, release_versio
         **extra_fields
     )
     return issue.key
+
+def transit_release_task(jira_client, extra_fields, release_project, release_version, status):
+    if not extra_fields:
+        extra_fields = {}
+
+    component_name = extra_fields.pop('component', None)
+
+    query = 'project={release_project} AND summary ~ "{component} release {release_version}"'.format(
+        component=component_name,
+        release_project=release_project,
+        release_version=release_version)
+    found_issues = jira_client.search_issues(query, maxResults=1)
+
+    if not found_issues or len(found_issues) == 0:
+        sys.stderr.write('Did not find any task for transition')
+        exit(1)
+
+    issue = found_issues[0]
+    print('Found an issue for transition:')
+    print('{}: {}'.format(issue.key, issue.fields.summary))
+
+    transitions = jira_client.transitions(issue)
+    if len(transitions) == 0:
+        sys.stderr.write('Did not find transition for status "{}"'.format(status))
+        exit(2)
+
+    transition = [t for t in transitions if t['name'].lower() == status.lower()][0]
+
+    print('Found transitions:')
+    for t in transitions:
+        print('{}{}: {}'.format(
+            '* ' if t['id'] == transition['id'] else '',
+            t['id'],
+            t['name'])
+            )
+
+    jira_client.transition_issue(issue, transition['id'])
+    print('Task {} has been transited to {}'.format(issue.key, transition['name']))
 
 
 def make_release_branch(release_set, release_version, release_project):
@@ -311,6 +350,15 @@ def run(commands, api_client, jira_task_extra, task_key, task_re, release_projec
             release_version=release_version
         )
 
+    if {Command.MERGE_RELEASE, Command.MARK_TASK_DONE} & set_commands:
+        transit_release_task(
+            jira_client=api_client.jira,
+            extra_fields=jira_task_extra,
+            release_project=release_project,
+            release_version=release_version,
+            status='done',
+        )
+
     if {Command.MERGE_RELEASE, Command.MERGE_MASTER_TO_DEVELOP} & set_commands:
         merge_master_to_develop()
 
@@ -324,6 +372,7 @@ def parse_args():
             Command.PREPARE,
             Command.HOTFIX,
             Command.MAKE_TASK,
+            Command.MARK_TASK_DONE,
             Command.MAKE_BRANCH,
             Command.MAKE_HOTFIX_BRANCH,
             Command.MAKE_LINKS,
