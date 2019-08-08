@@ -1,5 +1,5 @@
 env
 .idea
-config.yml
+config*.yml
 .python-version
 
