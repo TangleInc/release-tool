@@ -130,40 +130,38 @@ def make_release_task(jira_client, extra_fields, release_project, release_versio
     )
     return issue.key
 
+def get_jira_task_summary(component_name, release_version):
+	return "{component_name} release {release_version}".format(
+        component_name=component_name,
+        release_version=release_version,
+	)
+
 def transit_release_task(jira_client, extra_fields, release_project, release_version, status):
     if not extra_fields:
         extra_fields = {}
 
     component_name = extra_fields.pop('component', None)
 
-    query = 'project={release_project} AND summary ~ "{component} release {release_version}"'.format(
-        component=component_name,
+    query = 'project={release_project} AND summary ~ "{task_summary}"'.format(
         release_project=release_project,
-        release_version=release_version)
+        task_summary=get_jira_task_summary(component_name, release_version))
+
     found_issues = jira_client.search_issues(query, maxResults=1)
 
-    if not found_issues or len(found_issues) == 0:
+    if not found_issues:
         sys.stderr.write('Did not find any task for transition')
-        exit(1)
+        return
 
     issue = found_issues[0]
     print('Found an issue for transition:')
     print('{}: {}'.format(issue.key, issue.fields.summary))
 
-    transitions = jira_client.transitions(issue)
-    if len(transitions) == 0:
-        sys.stderr.write('Did not find transition for status "{}"'.format(status))
-        exit(2)
-
-    transition = [t for t in transitions if t['name'].lower() == status.lower()][0]
-
-    print('Found transitions:')
-    for t in transitions:
-        print('{}{}: {}'.format(
-            '* ' if t['id'] == transition['id'] else '',
-            t['id'],
-            t['name'])
-            )
+    transitions = [t for t in jira_client.transitions(issue) if t['name'].lower() == status.lower()]
+    if not transitions:
+        sys.stderr.write('Did not find any transition for status "{}"'.format(status))
+        return
+    
+    transition = transitions[0]
 
     jira_client.transition_issue(issue, transition['id'])
     print('Task {} has been transited to {}'.format(issue.key, transition['name']))
