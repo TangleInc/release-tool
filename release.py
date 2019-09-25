@@ -17,6 +17,7 @@ class Command:
     PREPARE = 'prepare'
     HOTFIX = 'hotfix'
     MAKE_TASK = 'make-task'
+    MARK_TASK_DONE = 'mark-task-done'
     MAKE_BRANCH = 'make-branch'
     MAKE_HOTFIX_BRANCH = 'make-hotfix-branch'
     MAKE_LINKS = 'make-links'
@@ -28,7 +29,7 @@ class Command:
 
 
 PR_RE = re.compile(r'#(\d+)', flags=re.U | re.I)
-REPO_RE = re.compile(r'[/:](\w+/\w+)\.git')
+REPO_RE = re.compile(r'[/:](\w+/(\w|-)+)\.git')
 
 ARGUMENTS = (
     'github-user',
@@ -133,13 +134,49 @@ def make_release_task(jira_client, extra_fields, release_project, release_versio
     )
     return issue.key
 
+def get_jira_task_summary(component_name, release_version):
+	return "{component_name} release {release_version}".format(
+        component_name=component_name,
+        release_version=release_version,
+	)
+
+def transit_release_task(jira_client, extra_fields, release_project, release_version, status):
+    if not extra_fields:
+        extra_fields = {}
+
+    component_name = extra_fields.pop('component', None)
+
+    query = 'project={release_project} AND summary ~ "{task_summary}"'.format(
+        release_project=release_project,
+        task_summary=get_jira_task_summary(component_name, release_version))
+
+    found_issues = jira_client.search_issues(query, maxResults=1)
+
+    if not found_issues:
+        sys.stderr.write('Did not find any task for transition')
+        return
+
+    issue = found_issues[0]
+    print('Found an issue for transition:')
+    print('{}: {}'.format(issue.key, issue.fields.summary))
+
+    transitions = [t for t in jira_client.transitions(issue) if t['name'].lower() == status.lower()]
+    if not transitions:
+        sys.stderr.write('Did not find any transition for status "{}"'.format(status))
+        return
+    
+    transition = transitions[0]
+
+    jira_client.transition_issue(issue, transition['id'])
+    print('Task {} has been transited to {}'.format(issue.key, transition['name']))
+
 
 def make_release_branch(release_set, release_version, release_project):
     git_fetch()
     execute_commands(
         [
             'git checkout -b {branch} --no-track origin/develop',
-            '{release_set} {release_version}',
+            'echo {release_version} | {release_set}',
             'git commit --allow-empty -am "Release {release_version}"',
             'git push -u origin {branch}'
         ],
@@ -154,7 +191,6 @@ def make_release_branch(release_set, release_version, release_project):
 def make_hotfix_branch(github_repository, release_set, release_version, release_project, prs):
     git_fetch()
     commands = [
-        'git commit --allow-empty -am "Release {release_version}"',
         'git checkout -b {branch} --no-track origin/master',
         '{release_set} {release_version}',
     ]
@@ -167,7 +203,8 @@ def make_hotfix_branch(github_repository, release_set, release_version, release_
         )
 
     commands.extend([
-        'git push -u origin {branch}'
+        'git commit --allow-empty -m "Release {release_version}"',
+        'git push -u origin {branch}',
     ])
 
     execute_commands(
@@ -361,6 +398,15 @@ def run(commands, api_client, jira_task_extra, task_key, task_re,
             release_version=release_version
         )
 
+    if {Command.MERGE_RELEASE, Command.MARK_TASK_DONE} & set_commands:
+        transit_release_task(
+            jira_client=api_client.jira,
+            extra_fields=jira_task_extra,
+            release_project=release_project,
+            release_version=release_version,
+            status='done',
+        )
+
     if {Command.MERGE_RELEASE, Command.MERGE_MASTER_TO_DEVELOP} & set_commands:
         merge_master_to_develop()
 
@@ -374,6 +420,7 @@ def parse_args():
             Command.PREPARE,
             Command.HOTFIX,
             Command.MAKE_TASK,
+            Command.MARK_TASK_DONE,
             Command.MAKE_BRANCH,
             Command.MAKE_HOTFIX_BRANCH,
             Command.MAKE_LINKS,
