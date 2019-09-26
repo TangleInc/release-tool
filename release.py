@@ -172,7 +172,7 @@ def make_release_branch(release_set, release_version, release_project):
     execute_commands(
         [
             'git checkout -b {branch} --no-track origin/develop',
-            'echo {release_version} | {release_set}',
+            '{release_set} {release_version}',
             'git commit --allow-empty -am "Release {release_version}"',
             'git push -u origin {branch}'
         ],
