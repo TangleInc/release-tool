@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+
+import sys
+
+from .plugins import git
+from .plugins.conf import Settings
+from .plugins.github import GitHubAPI
+from .plugins.jira import JiraAPI
+
+
+def run(settings: Settings):
+    github_api = GitHubAPI(settings)
+    jira_api = JiraAPI(settings)
+
+    if settings.require_jira_version:
+        jira_version = jira_api.get_version()
+    else:
+        jira_version = None
+
+    git_flows = git.GitFlows(settings)
+
+    if settings.require_creation_of_jira_task:
+        release_task_key = jira_api.make_release_task()
+    elif settings.require_jira_task_search:
+        release_task_key = jira_api.get_release_task()
+
+    if settings.is_release:
+        assert settings.hooks.set_version
+        git_flows.make_release_branch(release_set=settings.hooks.set_version)
+
+    if settings.is_hotfix:
+        assert settings.hooks.set_version
+        pulls = (github_api.repository.get_pull(pr) for pr in settings.prs)
+        list_of_commit_sha = (
+            pull.merge_commit_sha for pull in pulls if pull.merge_commit_sha
+        )
+
+        git_flows.make_hotfix_branch(
+            list_of_commit_sha=list_of_commit_sha,
+            release_set=settings.hooks.set_version,
+        )
+        print("Made hotfix branch")
+
+    if settings.require_jira_links:
+        assert release_task_key
+
+        relations = github_api.get_related_tasks()
+
+        if relations.pull_requests_without_task:
+            sys.stderr.write(
+                "Pull requests without tasks: {}\n".format(
+                    ", ".join(map(str, relations.pull_requests_without_task))
+                )
+            )
+
+        if not relations.tasks:
+            sys.stderr.write("Did not find related tasks")
+            exit(1)
+
+        jira_api.make_links(
+            version=jira_version,
+            release_task_key=release_task_key,
+            related_keys=relations.tasks,
+        )
+
+        print(
+            "Made links from {} to {}".format(
+                release_task_key, ", ".join(relations.tasks)
+            )
+        )
+
+    if settings.require_merge_to_master:
+        git_flows.merge_release_to_master()
+
+    if settings.require_merge_to_develop:
+        git_flows.merge_master_to_develop()
+
+    if settings.require_mark_tasks_done:
+        assert release_task_key
+        jira_api.mark_tasks_done(release_task_key)
+        jira_api.release_version(release_task_key)

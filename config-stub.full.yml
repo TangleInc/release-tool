@@ -1,0 +1,28 @@
+github:
+  token: XXX
+  task-re: SM-\d+
+
+# https://confluence.atlassian.com/cloud/api-tokens-938839638.html
+jira:
+  connection:
+    server: https://tangle.atlassian.net
+    user: valentin.kuznetsov@techops.ru
+    token: 9OJWJmnl4C5UU36pTrPV1866
+  release-task:
+    project: SM
+    type: Release
+    component: BSF
+    # with default values
+    name: '{component} release {version}'
+    link-type: "parent of"
+
+hooks:
+  get-version: python scripts/release-utils.py get-version
+  set-version: python scripts/release-utils.py set-version {version}
+
+
+# with default values
+git:
+  base: develop
+  master: master
+  release-name: release-{version}
