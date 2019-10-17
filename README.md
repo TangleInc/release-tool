@@ -4,9 +4,23 @@
 
 ### Prerequisites:
 
-1. Install poetry inside your global python
+1. Install [poetry](https://github.com/sdispater/poetry) inside your virtualenv or in global python (preferable for python developers)
 
 2. Prepare virtual env with your tool of choice (like [pyenv](https://github.com/pyenv/pyenv)) based on python version specified in [pyproject.toml](./pyproject.toml)
+
+Example of how it can be done:
+
+```bash
+brew install pyenv
+brew install pyenv-virtualenv
+
+# "socialfeed" is a project name where we are integrating release-tools
+pyenv virtualenv 3.7.3 socialfeed
+pyenv local socialfeed
+pip install poetry
+
+# add `.python-version` to `.gitignore`
+```
 
 ### Integration to project
 
