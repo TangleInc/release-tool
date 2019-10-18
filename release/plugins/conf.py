@@ -196,7 +196,7 @@ def _parse_args():
 
 def _load_config_file(config_path):
     with open(config_path.name) as fo:
-        return yaml.load(fo.read())
+        return yaml.safe_load(fo.read())
 
 
 def _to_snake_case(value):
