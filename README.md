@@ -14,6 +14,10 @@ Example of how it can be done:
 brew install pyenv
 brew install pyenv-virtualenv
 
+# update your profile (e.g. `.bash_profile`)
+echo 'eval "$(pyenv init -)"' >> ~/.bash_profile
+echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bash_profile
+
 # "socialfeed" is a project name where we are integrating release-tools
 pyenv virtualenv 3.7.3 socialfeed
 pyenv local socialfeed
