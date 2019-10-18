@@ -17,9 +17,8 @@ jira:
     link-type: "parent of"
 
 hooks:
-  get-version: python scripts/release-utils.py get-version
-  set-version: python scripts/release-utils.py set-version {version}
-
+  get-version: python submodules/shared/src/deploy/scripts/release-utils.py get-version
+  set-version: python submodules/shared/src/deploy/scripts/release-utils.py set-version {version}
 
 # with default values
 git:
