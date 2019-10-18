@@ -55,7 +55,7 @@ class GitFlows:
 
         execute_commands(
             "Make release branch",
-            GitFuncs.fetch,
+            GitFuncs.fetch(),
             GitFuncs.create_release_branch(
                 source="develop", branch=self.release_branch
             ),
