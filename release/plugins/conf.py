@@ -195,7 +195,7 @@ def _parse_args():
 
 
 def _load_config_file(config_path):
-    with open(config_path) as fo:
+    with open(config_path.name) as fo:
         return yaml.load(fo.read())
 
 
