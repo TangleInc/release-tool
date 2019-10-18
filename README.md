@@ -1,13 +1,37 @@
-Release Tool
-============
+# Release Tool
 
+## Init
 
-# Init
+### Prerequisites:
+
+1. Install [poetry](https://github.com/sdispater/poetry) inside your virtualenv or in global python (preferable for python developers)
+
+2. Prepare virtual env with your tool of choice (like [pyenv](https://github.com/pyenv/pyenv)) based on python version specified in [pyproject.toml](./pyproject.toml)
+
+Example of how it can be done:
+
 ```bash
-mkdir $PROJECT_ROOT && cd $PROJECT_ROOT                                 # create a project dir and enter
-git clone git@github.com:TangleInc/release-tool.git ../release-tool     # clone the project
-python3 -m venv ./env && source ./env/bin/activate                      # create and activate virtual env
-pip install -r ./requirements.txt                                       # install requirements
+brew install pyenv
+brew install pyenv-virtualenv
+
+# "socialfeed" is a project name where we are integrating release-tools
+pyenv virtualenv 3.7.3 socialfeed
+pyenv local socialfeed
+pip install poetry
+
+# add `.python-version` to `.gitignore`
+```
+
+### Integration to project
+
+```bash
+# cd (to your project folder)
+# activate virtual env created in previous step
+
+# add release tool as a submodule
+git submodule add git@github.com:TangleInc/release-tool.git submodules/release_tool
+cd submodules/release_tool
+poetry install
 ```
 
 You need to create a config and provide your auth and other info there in order to login to Github and Jira.
@@ -15,68 +39,70 @@ You need to create a config and provide your auth and other info there in order 
 To get Github token `Settings` -> `Developer settings` -> `Personal access tokens` -> `Generate new token`
 select option repo: `Full control of private repositories`
 
+To get Jira token use [this doc](https://confluence.atlassian.com/cloud/api-tokens-938839638.html)
+
 ```bash
-cp config-stub.yml config.yml                                           # create a personal config
-open config.yml
+# return to project folder
+cd -
+# create a personal config, release_tool.yml is a name used by default, so it's strongly suggested
+cp submodules/release_tool/config-stub.yml release_tool.yml
+# add "release_tool.yml" to .gitignore 
 ```
 
 Now you do the magic!
 
 ```bash
-source ./env/bin/activate
-python ./release.py --config=./config.yml [command]
+python -m submodules.release_tool.release -h
 ```
 
-Or even better — make aliases to use it like this `./release --config=config.yml [command]`
+Or even better — make aliases to use it like this `./release [command]`
 
 ```bash
-ln -s ../release-tool/release.py release
+echo 'python -m submodules.release_tool.release $*' > release
 chmod +x release
-
-cp ../release-tool/release.yml .
-# edit release.yml
-
-# add these 2 files to .gitignore if they are not already there
+# you can either commit "release" or add it to .gitignore 
 ```
 
-# Usage
+## Usage
 
 **Important:** during release creation the script alerts you about pull requests not linked to any task. You need to check these PRs manually to ensure everything is OK.
 
-## New full branch release
+### New full branch release
 
 Make a release branch from the entire `develop`.
 
 ```bash
-./release --config=config.yml --version=X.Y.Z prepare
+./release prepare
 ```
 
-## New specific commits release
+### New specific commits release
 
 Cherry pick specified pull requests using their numbers to a release branch.
 
 ```bash
-./release --config=config.yml --version=X.Y.Z hotfix --pr=XXX --pr=...
+./release hotfix --pr=XXX --pr=...
 ```
 
-## Merge
+### Finish release
 
-Merge a release branch to master, mark the merge commit with a tag and merge `master` to `develop`.
+Merge a release branch to master, mark the merge commit with a tag and merge `master` to `develop`. Also move jira tasks and release as "Done".
 
 ```bash
-./release --config=config.yml --version=X.Y.Z merge-release
+./release finish
 ```
 
-## Manual
+### Manual
 ```bash
-./release --config=config.yml --version=X.Y.Z make-task
+./release make-task
 
 # release / hotfix
-./release --config=config.yml --version=X.Y.Z make-branch
-./release --config=config.yml --version=X.Y.Z make-hotfix-branch --pr=XXX --pr=...
+./release make-branch
+./release make-hotfix-branch --pr=XXX --pr=...
+./release make-links
+./release merge-release
+./release merge-to-master
+./release merge-master-to-develop
+./release mark-tasks-done
 
-./release --config=config.yml --version=X.Y.Z make-links --task=XXX
 
-./release --config=config.yml --version=X.Y.Z merge-to-master
-./release --config=config.yml --version=X.Y.Z merge-master-to-develop
 ```
