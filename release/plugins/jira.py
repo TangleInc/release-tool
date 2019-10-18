@@ -27,7 +27,7 @@ class JiraAPI:
         )
 
     def _create_version(self, project: Project):
-        proposed_name = "Release" if self._settings.is_release else "Hotfix"
+        proposed_name = "Hotfix" if self._settings.version.minor > 0 else "Release"
         user_input = input(f"Input new Jira version name: [{proposed_name}]: ")
         name = user_input if user_input else proposed_name
 
@@ -162,8 +162,10 @@ class JiraAPI:
             exit(1)
 
         if len(found_issues) > 1:
+            issues_str = ', '.join([i.key for i in found_issues])
             print_error(
-                "Your release task has not unique name, fix it before using this functionality"
+                f"Your release task has not unique name, fix it before using this functionality,"
+                f" found issues: {issues_str}"
             )
             exit(1)
 

@@ -21,7 +21,11 @@ class BashFunc:
         return output.decode("utf-8")
 
     def __str__(self):
-        return self.func.format(**self.kwargs)
+        try:
+            return self.func.format(**self.kwargs)
+        except Exception as exc:
+            print_error(f"Error: {exc}. In formatting bash function: `{self.func}` with parameters: `{self.kwargs}`")
+            exit(1)
 
 
 class Hooks:

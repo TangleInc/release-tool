@@ -81,18 +81,17 @@ class Settings:
         self.version = self._get_version()
 
         self.prs = args.pr
-        # PRs should be specified only for hotfix
-        assert self.is_hotfix or not self.prs
+        assert self.require_creation_of_hotfix_branch or not self.prs, "'--pr' should be specified only for hotfix"
 
     def _get_version(self):
         proposed_version = VersionInfo.parse(self.hooks.get_version()())
 
         print(f"Current version: {proposed_version}")
 
-        if self.is_release:
-            proposed_version = bump_minor(str(proposed_version))
-        if self.is_hotfix:
-            proposed_version = bump_patch(str(proposed_version))
+        if self.require_creation_of_release_branch:
+            proposed_version = VersionInfo.parse(bump_minor(str(proposed_version)))
+        if self.require_creation_of_hotfix_branch:
+            proposed_version = VersionInfo.parse(bump_patch(str(proposed_version)))
 
         version = None
         while version is None:
@@ -169,11 +168,11 @@ class Settings:
         )
 
     @property
-    def is_release(self) -> bool:
+    def require_creation_of_release_branch(self) -> bool:
         return bool(self._commands & {Command.PREPARE, Command.MAKE_BRANCH})
 
     @property
-    def is_hotfix(self) -> bool:
+    def require_creation_of_hotfix_branch(self) -> bool:
         return bool(self._commands & {Command.HOTFIX, Command.MAKE_HOTFIX_BRANCH})
 
 

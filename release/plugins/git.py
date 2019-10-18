@@ -1,14 +1,16 @@
 from functools import partial
 from typing import Callable, Iterable
 
-from .common import BashFunc
+from .common import BashFunc, print_error
 from .conf import Settings
 
 
-__all__ = ["GitFuncs", "GitFlows"]
+__all__ = ["GitFuncs", "GitFlows", "check_repo_changes"]
 
 
 class GitFuncs:
+    check_repo_for_changes = partial(BashFunc, "git status --porcelain")
+
     fetch = partial(BashFunc, "git fetch")
     create_release_branch = partial(
         BashFunc, "git checkout -q -b {branch} --no-track origin/{source}"
@@ -105,3 +107,11 @@ def execute_commands(name, *commands: BashFunc):
 
     for command in commands:
         command()
+
+
+def check_repo_changes():
+    repo_changes = GitFuncs.check_repo_for_changes()()
+    if repo_changes:
+        print_error('Your repo has changes, commit or stash them:')
+        print_error(repo_changes)
+        exit(1)

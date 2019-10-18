@@ -24,12 +24,14 @@ def run(settings: Settings):
     elif settings.require_jira_task_search:
         release_task_key = jira_api.get_release_task()
 
-    if settings.is_release:
+    if settings.require_creation_of_release_branch:
         assert settings.hooks.set_version
+        git.check_repo_changes()
         git_flows.make_release_branch(release_set=settings.hooks.set_version)
 
-    if settings.is_hotfix:
+    if settings.require_creation_of_hotfix_branch:
         assert settings.hooks.set_version
+        git.check_repo_changes()
         pulls = (github_api.repository.get_pull(pr) for pr in settings.prs)
         list_of_commit_sha = (
             pull.merge_commit_sha for pull in pulls if pull.merge_commit_sha
