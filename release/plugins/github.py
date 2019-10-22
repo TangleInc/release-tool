@@ -9,7 +9,7 @@ from .conf import Settings
 
 
 PR_RE = re.compile(r"#(\d+)", flags=re.U | re.I)
-REPO_RE = re.compile(r"[/:](\w+/\w+)\.git")
+REPO_RE = re.compile(r"[/:]([-\w_]+/[-\w_]+)\.git")
 
 
 class GetTaskResponse(NamedTuple):
