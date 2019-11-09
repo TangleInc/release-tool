@@ -158,11 +158,11 @@ class JiraAPI:
         found_issues = self._api.search_issues(query)
 
         if not found_issues:
-            print_error("Did not find release task")
-            exit(1)
+            print_error("Did not find existing release task")
+            return self.make_release_task()
 
         if len(found_issues) > 1:
-            issues_str = ', '.join([i.key for i in found_issues])
+            issues_str = ", ".join([i.key for i in found_issues])
             print_error(
                 f"Your release task has not unique name, fix it before using this functionality,"
                 f" found issues: {issues_str}"

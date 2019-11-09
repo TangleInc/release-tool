@@ -19,11 +19,6 @@ def run(settings: Settings):
 
     git_flows = git.GitFlows(settings)
 
-    if settings.require_creation_of_jira_task:
-        release_task_key = jira_api.make_release_task()
-    elif settings.require_jira_task_search:
-        release_task_key = jira_api.get_release_task()
-
     if settings.require_creation_of_release_branch:
         assert settings.hooks.set_version
         git.check_repo_changes()
@@ -42,6 +37,9 @@ def run(settings: Settings):
             release_set=settings.hooks.set_version,
         )
         print("Made hotfix branch")
+
+    if settings.require_creation_of_jira_task or settings.require_jira_task_search:
+        release_task_key = jira_api.get_release_task()
 
     if settings.require_jira_links:
         assert release_task_key
