@@ -1,7 +1,10 @@
 from datetime import datetime
+from functools import partial
 
 from jira import JIRA
 from jira.resources import Project, Version
+from multiprocessing.pool import ThreadPool
+
 
 from .common import print_error, print_title
 from .conf import Settings
@@ -127,13 +130,19 @@ class JiraAPI:
         self._add_to_release_version(version, release_task_key)
 
         print(f"Linking {len(related_keys)} tasks:")
-        for child_task_key in related_keys:
-            print(f"* {child_task_key}")
-            self._api.create_issue_link(
-                self.release_task.link_type, release_task_key, child_task_key
-            )
+        partial_make_links = partial(
+            self._make_links, version, release_task_key
+        )
+        with ThreadPool(5) as pool:
+            pool.map(partial_make_links, related_keys)
 
-            self._add_to_release_version(version, child_task_key)
+    def _make_links(self, version, release_task_key, child_task_key):
+        print(f"* {child_task_key}")
+        self._api.create_issue_link(
+            self.release_task.link_type, release_task_key, child_task_key
+        )
+
+        self._add_to_release_version(version, child_task_key)
 
     def make_release_task(self):
         print_title("Creating Jira release task")
