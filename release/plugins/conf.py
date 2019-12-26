@@ -50,6 +50,8 @@ class JiraReleaseTaskParams(NamedTuple):
 class JiraTaskTransitionParams(NamedTuple):
     from_status = "To Deploy"
     done_status = "Done"
+    final_statuses = (done_status, "Closed")
+    task_types_to_skip = ("Story",)
 
 
 class JiraSettings:

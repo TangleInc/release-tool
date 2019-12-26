@@ -83,11 +83,15 @@ class JiraAPI:
         To check that all tasks in Jira release is finished
         select them using jql
         """
+        final_statuses = '", "'.join(self.transition.final_statuses)
+        types_to_skip = '", "'.join(self.transition.task_types_to_skip)
+
         return self._api.search_issues(
             f'project = "{self.release_task.project}"'
             f' AND fixVersion = "{version.name}"'
             f' AND fixVersion in unreleasedVersions("{self.release_task.project}")'
-            f" AND status != {self.transition.done_status}"
+            f' AND status NOT IN ("{final_statuses}")'
+            f' AND type NOT IN ("{types_to_skip}")'
         )
 
     def release_version(self, release_task_key: str):
