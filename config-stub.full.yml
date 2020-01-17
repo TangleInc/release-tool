@@ -1,24 +1,42 @@
 github:
-  token: XXX
   task-re: SM-\d+
 
-# https://confluence.atlassian.com/cloud/api-tokens-938839638.html
+  # Step 1. Fill Github auth token (check README.md)
+  token: XXX
+
+
 jira:
   connection:
     server: https://tangle.atlassian.net
+
+    # Step 2. Fill JIRA credentials
+    # https://confluence.atlassian.com/cloud/api-tokens-938839638.html
     user: valentin.kuznetsov@techops.ru
     token: 9OJWJmnl4C5UU36pTrPV1866
   release-task:
     project: SM
     type: Release
+
+    # Step 3. choose your component
+    component: Frontend
+    component: Native
     component: BSF
+    component: BSM
+
     # with default values
     name: '{component} release {version}'
     link-type: "parent of"
 
 hooks:
+  # Step 4. Choose you hooks
+  # for backend:
   get-version: python submodules/shared/src/deploy/scripts/release-utils.py get-version
   set-version: python submodules/shared/src/deploy/scripts/release-utils.py set-version {version}
+
+  # for frontend:
+  get-version: npm run --silent print-version
+  set-version: yarn version --no-git-tag-version --new-version {version} && npm i
+
 
 # with default values
 git:
