@@ -10,6 +10,7 @@
 
 Example of how it can be done:
 
+done once per computer:
 ```bash
 brew install pyenv
 brew install pyenv-virtualenv
@@ -22,8 +23,13 @@ echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bash_profile
 
 # "socialfeed" is a project name where we are integrating release-tools
 pyenv install 3.7.3
-pyenv virtualenv 3.7.3 socialfeed
-pyenv local socialfeed
+# choose appropriate ENV_NAME, e.g. socialfeed
+pyenv virtualenv 3.7.3 {{ENV_NAME}}
+```
+
+done once per repository
+```bash
+pyenv local {{ENV_NAME}}
 pip install poetry
 
 # add `.python-version` to `.gitignore`
