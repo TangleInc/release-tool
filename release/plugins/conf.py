@@ -50,12 +50,12 @@ class JiraReleaseTaskParams(NamedTuple):
 
 class JiraTaskTransitionParams(NamedTuple):
     child_from_status = "To Deploy"
-    child_done_status = "Done"
-    child_final_statuses = (done_status, "Closed")
+    child_to_status = "Done"
+    child_final_statuses = (child_to_status, "Closed")
     child_task_types_to_skip = ("Story",)
 
     release_from_status = "On Production"
-    release_to_status = "Done"
+    release_to_status = "Release Merged"
 
 class JiraSettings:
     def __init__(self, **kwargs):
