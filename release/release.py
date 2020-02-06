@@ -39,7 +39,7 @@ def run(settings: Settings):
         print("Made hotfix branch")
 
     if settings.require_creation_of_jira_task or settings.require_jira_task_search:
-        release_task_key = "SM-707" # jira_api.get_release_task()
+        release_task_key = jira_api.get_release_task()
 
     if settings.require_jira_links:
         assert release_task_key
