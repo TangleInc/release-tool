@@ -83,8 +83,8 @@ class JiraAPI:
         To check that all tasks in Jira release is finished
         select them using jql
         """
-        final_statuses = '", "'.join(self.transition.final_statuses)
-        types_to_skip = '", "'.join(self.transition.task_types_to_skip)
+        final_statuses = '", "'.join(self.transition.child_final_statuses)
+        types_to_skip = '", "'.join(self.transition.child_task_types_to_skip)
 
         return self._api.search_issues(
             f'project = "{self.release_task.project}"'
@@ -177,14 +177,25 @@ class JiraAPI:
         print(f"Found Jira release task: {release_issue.key}")
         return release_issue.key
 
-    def mark_tasks_done(self, release_task_key):
+    def mark_release_task_done(self, release_task_key):
         print_title(
-            f'Transition children of "{release_task_key}" from "{self.transition.from_status}" to "{self.transition.done_status}"'
+            f'Transition release task "{release_task_key}" from "{self.transition.release_from_status}" to "{self.transition.release_done_status}"'
+        )
+
+        release_issue = self._api.issue(release_task_key)
+        print_title(
+            f'Current status is "{release_issue.fields.status}"'
+        )
+        
+
+    def mark_children_tasks_done(self, release_task_key):
+        print_title(
+            f'Transition children of "{release_task_key}" from "{self.transition.child_from_status}" to "{self.transition.child_done_status}"'
         )
 
         query = (
             f'issue in linkedIssues("{release_task_key}", "{self.release_task.link_type}")'
-            f' AND status = "{self.transition.from_status}"'
+            f' AND status = "{self.transition.child_from_status}"'
         )
         found_issues = self._api.search_issues(query)
 
@@ -196,11 +207,11 @@ class JiraAPI:
             transitions = [
                 t
                 for t in self._api.transitions(issue)
-                if t["name"].lower() == self.transition.done_status.lower()
+                if t["name"].lower() == self.transition.child_done_status.lower()
             ]
             if not transitions:
                 print_error(
-                    f'Issue "{issue.key}" does not have transition to status "{self.transition.done_status}"'
+                    f'Issue "{issue.key}" does not have transition to status "{self.transition.child_done_status}"'
                 )
                 continue
 
@@ -210,7 +221,6 @@ class JiraAPI:
             print(
                 f'Task {issue.key} has been transited to status "{transition["name"]}"'
             )
-
 
 def _get_formatted_date():
     return datetime.today().strftime("%Y-%m-%d")
