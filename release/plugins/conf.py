@@ -19,7 +19,8 @@ class Command(str, Enum):
 
     FINISH = "finish"
 
-    MARK_TASKS_DONE = "mark-tasks-done"
+    MARK_CHILDREN_TASKS_DONE = "mark-children-tasks-done"
+    MARK_RELEASE_TASK_DONE = "mark-release-task-done"
 
     MERGE_RELEASE = "merge-release"
     MERGE_TO_MASTER = "merge-to-master"
@@ -48,11 +49,13 @@ class JiraReleaseTaskParams(NamedTuple):
 
 
 class JiraTaskTransitionParams(NamedTuple):
-    from_status = "To Deploy"
-    done_status = "Done"
-    final_statuses = (done_status, "Closed")
-    task_types_to_skip = ("Story",)
+    child_from_status = "To Deploy"
+    child_to_status = "Done"
+    child_final_statuses = (child_to_status, "Closed")
+    child_task_types_to_skip = ("Story",)
 
+    release_from_status = "On Production"
+    release_to_status = "Release Merged"
 
 class JiraSettings:
     def __init__(self, **kwargs):
@@ -142,7 +145,7 @@ class Settings:
     def require_jira_task_search(self) -> bool:
         return bool(
             self._commands
-            & {Command.FINISH, Command.MAKE_LINKS, Command.MARK_TASKS_DONE}
+            & {Command.FINISH, Command.MAKE_LINKS, Command.MARK_CHILDREN_TASKS_DONE, Command.MARK_RELEASE_TASK_DONE}
         )
 
     @property
@@ -152,8 +155,12 @@ class Settings:
         )
 
     @property
-    def require_mark_tasks_done(self) -> bool:
-        return bool(self._commands & {Command.FINISH, Command.MARK_TASKS_DONE})
+    def require_mark_chldren_tasks_done(self) -> bool:
+        return bool(self._commands & {Command.FINISH, Command.MARK_CHILDREN_TASKS_DONE})
+
+    @property
+    def require_mark_release_task_done(self) -> bool:
+        return bool(self._commands & {Command.FINISH, Command.MARK_RELEASE_TASK_DONE})
 
     @property
     def require_merge_to_master(self) -> bool:

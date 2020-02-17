@@ -75,7 +75,11 @@ def run(settings: Settings):
     if settings.require_merge_to_develop:
         git_flows.merge_master_to_develop()
 
-    if settings.require_mark_tasks_done:
+    if settings.require_mark_release_task_done:
         assert release_task_key
-        jira_api.mark_tasks_done(release_task_key)
+        jira_api.mark_release_task_done(release_task_key)
+
+    if settings.require_mark_chldren_tasks_done:
+        assert release_task_key
+        jira_api.mark_children_tasks_done(release_task_key)
         jira_api.release_version(release_task_key)

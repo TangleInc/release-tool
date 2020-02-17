@@ -86,8 +86,8 @@ class JiraAPI:
         To check that all tasks in Jira release is finished
         select them using jql
         """
-        final_statuses = '", "'.join(self.transition.final_statuses)
-        types_to_skip = '", "'.join(self.transition.task_types_to_skip)
+        final_statuses = '", "'.join(self.transition.child_final_statuses)
+        types_to_skip = '", "'.join(self.transition.child_task_types_to_skip)
 
         return self._api.search_issues(
             f'project = "{self.release_task.project}"'
@@ -96,6 +96,17 @@ class JiraAPI:
             f' AND status NOT IN ("{final_statuses}")'
             f' AND type NOT IN ("{types_to_skip}")'
         )
+
+    def _get_transition(self, issue, transition_name):
+        transitions = [
+            t
+            for t in self._api.transitions(issue)
+            if t["name"].lower() == transition_name.lower()
+        ]
+        if not transitions:
+            return None
+
+        return transitions[0]
 
     def release_version(self, release_task_key: str):
         print_title(f"Releasing Jira version of release task {release_task_key}")
@@ -186,40 +197,65 @@ class JiraAPI:
         print(f"Found Jira release task: {release_issue.key}")
         return release_issue.key
 
-    def mark_tasks_done(self, release_task_key):
+    def mark_release_task_done(self, release_task_key):
         print_title(
-            f'Transition children of "{release_task_key}" from "{self.transition.from_status}" to "{self.transition.done_status}"'
+            f'Transition release task "{release_task_key}" from "{self.transition.release_from_status}" to "{self.transition.release_to_status}"'
+        )
+
+        release_issue = self._api.issue(release_task_key)
+        print_title(
+            f'Current release task status is "{release_issue.fields.status}"'
+        )
+
+        if release_issue.fields.status.name.lower() != self.transition.release_from_status.lower():
+            print_error(
+                f'Release task "{release_task_key}" has inproper status'
+            )
+            return
+
+        transition = self._get_transition(release_issue, self.transition.release_to_status)
+
+        if not transition:
+            print_error(
+                f'Release task "{release_task_key}" has no transition to "{self.transition.release_to_status}"'
+            )
+            return
+        
+        self._api.transition_issue(release_issue, transition["id"])
+
+        print(
+            f'Release task {release_issue.key} has been transited to status "{transition["name"]}"'
+        )
+
+    def mark_children_tasks_done(self, release_task_key):
+        print_title(
+            f'Transition children of "{release_task_key}" from "{self.transition.child_from_status}" to "{self.transition.child_to_status}"'
         )
 
         query = (
             f'issue in linkedIssues("{release_task_key}", "{self.release_task.link_type}")'
-            f' AND status = "{self.transition.from_status}"'
+            f' AND status = "{self.transition.child_from_status}"'
         )
         found_issues = self._api.search_issues(query)
+
+        to_status = self.transition.child_to_status.lower()
 
         if not found_issues:
             print_error("Did not find any task for transition")
             return
 
         for issue in found_issues:
-            transitions = [
-                t
-                for t in self._api.transitions(issue)
-                if t["name"].lower() == self.transition.done_status.lower()
-            ]
-            if not transitions:
+            transition = self._get_transition(issue, to_status)
+            if not transition:
                 print_error(
-                    f'Issue "{issue.key}" does not have transition to status "{self.transition.done_status}"'
+                    f'Issue "{issue.key}" does not have transition to status "{self.transition.child_to_status}"'
                 )
                 continue
-
-            transition = transitions[0]
 
             self._api.transition_issue(issue, transition["id"])
             print(
                 f'Task {issue.key} has been transited to status "{transition["name"]}"'
             )
-
 
 def _get_formatted_date():
     return datetime.today().strftime("%Y-%m-%d")
