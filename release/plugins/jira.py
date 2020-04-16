@@ -220,7 +220,7 @@ class JiraAPI:
                 f'Release task "{release_task_key}" has no transition to "{self.transition.release_to_status}"'
             )
             return
-        
+
         self._api.transition_issue(release_issue, transition["id"])
 
         print(
@@ -233,7 +233,7 @@ class JiraAPI:
         )
 
         query = (
-            f'issue in linkedIssues("{release_task_key}", "{self.release_task.link_type}")'
+            f'issue in linkedIssues("{release_task_key}")'
             f' AND status = "{self.transition.child_from_status}"'
         )
         found_issues = self._api.search_issues(query)
