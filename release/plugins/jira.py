@@ -134,7 +134,7 @@ class JiraAPI:
 
     def _add_to_release_version(self, version: Version, release_task_key: str):
         issue = self._api.issue(release_task_key)
-        issue.update(fields={"fixVersions": [{"name": version.name}]})
+        issue.add_field_value('fixVersions', {'name': version.name})
 
     def make_links(self, version: Version, release_task_key, related_keys):
         print_title(

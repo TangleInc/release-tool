@@ -76,17 +76,22 @@ class GitSettings(NamedTuple):
 
 
 class Settings:
-    def __init__(self, args, config):
-        self._commands = set(args.commands)
+    def __init__(self, config, args=None):
+        if args:
+            self._commands = set(args.commands)
+            self.prs = args.pr
+            assert self.require_creation_of_hotfix_branch or not self.prs, "'--pr' should be specified only for hotfix"
+        else:
+            # for debug purpose, to create settings without command line call
+            self._commands = set()
+            self.prs = ()
+
         self.jira = JiraSettings(**config.get("jira", {}))
         self.git = GitSettings(**config.get("git", {}))
         self.hooks = Hooks(**config.get("hooks", {}))
         self.github = GitHubSettings(**config.get("github", {}))
 
         self.version = self._get_version()
-
-        self.prs = args.pr
-        assert self.require_creation_of_hotfix_branch or not self.prs, "'--pr' should be specified only for hotfix"
 
     def _get_version(self):
         proposed_version = VersionInfo.parse(self.hooks.get_version()())
@@ -203,7 +208,7 @@ def _parse_args():
 
 
 def _load_config_file(config_path):
-    with open(config_path.name) as fo:
+    with open(config_path) as fo:
         return yaml.safe_load(fo.read())
 
 
@@ -222,4 +227,11 @@ def parse_and_combine_args() -> Settings:
     config = _load_config_file(args.config)
     config = _to_snake_case(config)
 
-    return Settings(args, config)
+    return Settings(config, args)
+
+
+def get_debug_settings(config_file: Path) -> Settings:
+    config = _load_config_file(config_file)
+    config = _to_snake_case(config)
+
+    return Settings(config)
