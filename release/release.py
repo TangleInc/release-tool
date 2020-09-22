@@ -12,10 +12,11 @@ def run(settings: Settings):
     github_api = GitHubAPI(settings)
     jira_api = JiraAPI(settings)
 
-    if settings.require_jira_version:
+    if settings.require_jira_version and not settings.no_input:
         jira_version = jira_api.get_version()
     else:
         jira_version = None
+    print(f"Jira version: {jira_version.name if jira_version else '-'}")
 
     git_flows = git.GitFlows(settings)
 

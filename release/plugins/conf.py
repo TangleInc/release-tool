@@ -57,6 +57,7 @@ class JiraTaskTransitionParams(NamedTuple):
     release_from_status = "On Production"
     release_to_status = "Release Merged"
 
+
 class JiraSettings:
     def __init__(self, **kwargs):
         self.connection = JiraConnection(**kwargs["connection"])
@@ -80,11 +81,15 @@ class Settings:
         if args:
             self._commands = set(args.commands)
             self.prs = args.pr
-            assert self.require_creation_of_hotfix_branch or not self.prs, "'--pr' should be specified only for hotfix"
+            self.no_input = args.noinput
+            assert (
+                self.require_creation_of_hotfix_branch or not self.prs
+            ), "'--pr' should be specified only for hotfix"
         else:
             # for debug purpose, to create settings without command line call
             self._commands = set()
             self.prs = ()
+            self.no_input = False
 
         self.jira = JiraSettings(**config.get("jira", {}))
         self.git = GitSettings(**config.get("git", {}))
@@ -102,6 +107,9 @@ class Settings:
             proposed_version = VersionInfo.parse(bump_minor(str(proposed_version)))
         if self.require_creation_of_hotfix_branch:
             proposed_version = VersionInfo.parse(bump_patch(str(proposed_version)))
+
+        if self.no_input:
+            return proposed_version
 
         version = None
         while version is None:
@@ -150,7 +158,12 @@ class Settings:
     def require_jira_task_search(self) -> bool:
         return bool(
             self._commands
-            & {Command.FINISH, Command.MAKE_LINKS, Command.MARK_CHILDREN_TASKS_DONE, Command.MARK_RELEASE_TASK_DONE}
+            & {
+                Command.FINISH,
+                Command.MAKE_LINKS,
+                Command.MARK_CHILDREN_TASKS_DONE,
+                Command.MARK_RELEASE_TASK_DONE,
+            }
         )
 
     @property
@@ -196,6 +209,11 @@ def _parse_args():
     parser.add_argument(
         "--config", default=Path("release_tool.yml"), type=argparse.FileType("r")
     )
+
+    parser.add_argument(
+        "--noinput", help="run without user interaction", action="store_true"
+    )
+
     parser.add_argument(
         "--pr",
         action="append",

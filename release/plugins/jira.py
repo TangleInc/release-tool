@@ -77,10 +77,7 @@ class JiraAPI:
             v for v in self._api.project_versions(project) if not v.released
         ]
 
-        version = self._select_version(project, unreleased_versions)
-
-        print(f"Jira version: {version.name if version else '-'}")
-        return version
+        return self._select_version(project, unreleased_versions)
 
     def _get_jira_release_unfinished_tasks(self, version: Version):
         """
