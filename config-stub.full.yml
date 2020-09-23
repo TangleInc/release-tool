@@ -9,10 +9,9 @@ jira:
   connection:
     server: https://tangle.atlassian.net
 
-    # Step 2. Fill JIRA credentials
-    # https://confluence.atlassian.com/cloud/api-tokens-938839638.html
-    user: valentin.kuznetsov@techops.ru
-    token: 9OJWJmnl4C5UU36pTrPV1866
+    # Step 2. Fill JIRA credentials (check README.md)
+    user: jira_login (email)
+    token: XXX
   release-task:
     project: SM
     type: Release
@@ -23,9 +22,28 @@ jira:
     component: BSF
     component: BSM
 
-    # with default values
+    # can be omitted if default params are not changed
     name: '{component} release {version}'
     link-type: "parent of"
+
+  # can be omitted if default params are not changed
+  transition:
+    # When release is finished move Release task from/to status
+    release-from-status: "On Production"
+    release-to-status: "Release Merged"
+
+    # When release is finished move Release *child* tasks from/to status
+    child-from-status: "To Deploy"
+    child-to-status: "Done"
+
+    # Auto finish Jira FixVersion
+    # 1. filter to understand which tasks are finished
+    child-final-statuses:
+    - "Done"
+    - "Closed"
+    # 2. filter for tasks that are not managed by release-tool
+    child-task-types-to-skip:
+    - "Story"
 
 hooks:
   # Step 4. Choose you hooks
@@ -38,7 +56,7 @@ hooks:
   set-version: yarn version --no-git-tag-version --new-version {version} && npm i
 
 
-# with default values
+# can be omitted if default params are not changed
 git:
   base: develop
   master: master

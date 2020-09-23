@@ -76,7 +76,7 @@ To get Jira token use [this doc](https://confluence.atlassian.com/cloud/api-toke
 
 ```bash
 # create a personal config, release_tool.yml is a name used by default, so it's strongly suggested
-cp submodules/release_tool/config-stub.yml release_tool.yml
+cp submodules/release_tool/config-stub.full.yml release_tool.yml
 # add "release_tool.yml" to .gitignore 
 ```
 

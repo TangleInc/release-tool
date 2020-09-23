@@ -1,12 +1,50 @@
 import argparse
+from dataclasses import MISSING, dataclass, fields
 from enum import Enum
 from pathlib import Path
-from typing import NamedTuple
 
 import yaml
 from semver import VersionInfo, bump_minor, bump_patch
 
 from .common import Hooks
+from .env import ENV_VARIABLE_NAMES, get_parameter
+
+
+class ParameterMixin:
+    SUBCLASSES = []
+
+    def __init_subclass__(cls, **kwargs):
+        # collect subclasses for validation
+        # validation can't be done here as dataclass decorator
+        # is not executed at this point
+        cls.SUBCLASSES.append(cls)
+
+    @classmethod
+    def validate(cls):
+        """Validate that all parameters have env variable representation"""
+        for subclass in cls.SUBCLASSES:
+            env_variable_names = ENV_VARIABLE_NAMES.get(subclass.__name__, {})
+            for field_name in subclass._parameter_defaults():
+                assert (
+                    field_name in env_variable_names
+                ), f'"{field_name}" has no env variable'
+
+    @classmethod
+    def from_config(cls, config: dict):
+        env_variable_names = ENV_VARIABLE_NAMES.get(cls.__name__, {})
+        return cls(
+            **{
+                name: get_parameter(config, name, env_variable_names.get(name), default)
+                for name, default in cls._parameter_defaults().items()
+            }
+        )
+
+    @classmethod
+    def _parameter_defaults(cls):
+        return {
+            field.name: None if field.default is MISSING else field.default
+            for field in fields(cls)
+        }
 
 
 class Command(str, Enum):
@@ -34,13 +72,15 @@ class Command(str, Enum):
         return {e.value for e in cls.__members__.values()}
 
 
-class JiraConnection(NamedTuple):
+@dataclass
+class JiraConnection(ParameterMixin):
     server: str
     user: str
     token: str
 
 
-class JiraReleaseTaskParams(NamedTuple):
+@dataclass
+class JiraReleaseTaskParams(ParameterMixin):
     project: str
     component: str
     name: str = "{component} release {version}"
@@ -48,29 +88,34 @@ class JiraReleaseTaskParams(NamedTuple):
     type: str = "Task"
 
 
-class JiraTaskTransitionParams(NamedTuple):
-    child_from_status = "To Deploy"
-    child_to_status = "Done"
-    child_final_statuses = (child_to_status, "Closed")
-    child_task_types_to_skip = ("Story",)
+@dataclass
+class JiraTaskTransitionParams(ParameterMixin):
+    child_from_status: str = "To Deploy"
+    child_to_status: str = "Done"
+    child_final_statuses: str = (child_to_status, "Closed")
+    child_task_types_to_skip: str = ("Story",)
 
-    release_from_status = "On Production"
-    release_to_status = "Release Merged"
+    release_from_status: str = "On Production"
+    release_to_status: str = "Release Merged"
 
 
 class JiraSettings:
     def __init__(self, **kwargs):
-        self.connection = JiraConnection(**kwargs["connection"])
-        self.release_task = JiraReleaseTaskParams(**kwargs["release_task"])
-        self.transition = JiraTaskTransitionParams(**kwargs.get("transition", {}))
+        self.connection = JiraConnection.from_config(kwargs["connection"])
+        self.release_task = JiraReleaseTaskParams.from_config(kwargs["release_task"])
+        self.transition = JiraTaskTransitionParams.from_config(
+            kwargs.get("transition", {})
+        )
 
 
-class GitHubSettings(NamedTuple):
+@dataclass
+class GitHubSettings(ParameterMixin):
     token: str
     task_re: str
 
 
-class GitSettings(NamedTuple):
+@dataclass
+class GitSettings(ParameterMixin):
     base: str = "develop"
     master: str = "master"
     release_name: str = "release-{version}"
@@ -92,9 +137,9 @@ class Settings:
             self.no_input = False
 
         self.jira = JiraSettings(**config.get("jira", {}))
-        self.git = GitSettings(**config.get("git", {}))
+        self.git = GitSettings.from_config(config.get("git", {}))
         self.hooks = Hooks(**config.get("hooks", {}))
-        self.github = GitHubSettings(**config.get("github", {}))
+        self.github = GitHubSettings.from_config(config.get("github", {}))
 
         self.version = self._get_version()
 
@@ -253,3 +298,7 @@ def get_debug_settings(config_file: Path) -> Settings:
     config = _to_snake_case(config)
 
     return Settings(config)
+
+
+# validate subclasses after all of them are created
+ParameterMixin.validate()
