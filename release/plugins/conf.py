@@ -1,7 +1,6 @@
 import argparse
 from dataclasses import MISSING, dataclass, fields
 from enum import Enum
-from pathlib import Path
 
 import yaml
 from semver import VersionInfo, bump_minor, bump_patch
@@ -252,7 +251,10 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("commands", nargs="+", choices=list(Command.values()))
     parser.add_argument(
-        "--config", default=Path("release_tool.yml"), type=argparse.FileType("r")
+        "--config",
+        default="release_tool.yml",
+        type=str,
+        help="Path to config file (default release_tool.yml)",
     )
 
     parser.add_argument(
@@ -270,7 +272,7 @@ def _parse_args():
     return parser.parse_args()
 
 
-def _load_config_file(config_path):
+def _load_config_file(config_path: str):
     with open(config_path) as fo:
         return yaml.safe_load(fo.read())
 
@@ -293,7 +295,7 @@ def parse_and_combine_args() -> Settings:
     return Settings(config, args)
 
 
-def get_debug_settings(config_file: Path) -> Settings:
+def get_debug_settings(config_file: str) -> Settings:
     config = _load_config_file(config_file)
     config = _to_snake_case(config)
 
