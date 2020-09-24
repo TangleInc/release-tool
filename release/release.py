@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-
-import sys
-
 from .plugins import git
 from .plugins.common import print_error
 from .plugins.conf import Settings
@@ -10,10 +7,6 @@ from .plugins.jira import JiraAPI
 
 
 def run(settings: Settings):
-    print("ERROR with skip")
-    print_error("ERROR")
-    exit(1)
-
     github_api = GitHubAPI(settings)
     jira_api = JiraAPI(settings)
 
@@ -54,16 +47,14 @@ def run(settings: Settings):
         relations = github_api.get_related_tasks()
 
         if relations.pull_requests_without_task:
-            print("PR without tasks:")
-            sys.stderr.write(
-                "Pull requests without tasks: {}\n".format(
+            print_error(
+                "Pull requests without tasks: {}".format(
                     ", ".join(map(str, relations.pull_requests_without_task))
                 )
             )
 
         if not relations.tasks:
-            print("no tasks")
-            sys.stderr.write("Did not find related tasks")
+            print_error("Did not find related tasks")
             exit(1)
 
         jira_api.make_links(
