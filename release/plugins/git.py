@@ -1,9 +1,7 @@
 from functools import partial
 from typing import Callable, Iterable
 
-from plugins.common import print_title
-
-from .common import BashFunc, print_error
+from .common import BashFunc, print_error, print_title
 from .conf import Settings
 
 
