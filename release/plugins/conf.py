@@ -121,6 +121,8 @@ class GitSettings(ParameterMixin):
 
 
 class Settings:
+    version: VersionInfo
+
     def __init__(self, config, args=None):
         if args:
             self._commands = set(args.commands)
@@ -140,9 +142,10 @@ class Settings:
         self.hooks = Hooks(**config.get("hooks", {}))
         self.github = GitHubSettings.from_config(config.get("github", {}))
 
+    def parse_project_version(self):
         self.version = self._get_version()
 
-    def _get_version(self):
+    def _get_version(self) -> VersionInfo:
         proposed_version = VersionInfo.parse(self.hooks.get_version()())
 
         print(f"Current version: {proposed_version}")
@@ -183,6 +186,22 @@ class Settings:
                 Command.HOTFIX,
                 Command.MAKE_HOTFIX_BRANCH,
                 Command.MAKE_LINKS,
+            }
+        )
+
+    @property
+    def require_clean_repo(self) -> bool:
+        return bool(
+            self._commands
+            & {
+                Command.PREPARE,
+                Command.MAKE_BRANCH,
+                Command.HOTFIX,
+                Command.MAKE_HOTFIX_BRANCH,
+                Command.FINISH,
+                Command.MERGE_RELEASE,
+                Command.MERGE_TO_MASTER,
+                Command.MERGE_MASTER_TO_DEVELOP,
             }
         )
 

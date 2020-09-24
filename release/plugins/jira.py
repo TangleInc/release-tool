@@ -39,7 +39,7 @@ class JiraAPI:
     def _select_version(
         self, project: Project, unreleased_versions
     ) -> Optional[Version]:
-        print("\nJira versions:")
+        print("Jira versions:")
         print("1) Skip")
         print("2) Create new")
         print("or select existing one:")
