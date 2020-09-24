@@ -55,13 +55,12 @@ def run(settings: Settings):
 
         if not relations.tasks:
             print_error("Did not find related tasks")
-            exit(1)
-
-        jira_api.make_links(
-            version=jira_version,
-            release_task_key=release_task_key,
-            related_keys=relations.tasks,
-        )
+        else:
+            jira_api.make_links(
+                version=jira_version,
+                release_task_key=release_task_key,
+                related_keys=relations.tasks,
+            )
 
         print(
             "Made links from {} to {}".format(

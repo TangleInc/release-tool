@@ -58,8 +58,8 @@ def print_error(msg):
 
 
 def print_title(msg):
-    print(f"\n{symbol} {msg}\n")
+    print(colored(f"\n{symbol} {msg}\n", "green"))
 
 
 def print_section(msg):
-    print(f"\n{symbol}\n{symbol} {msg}\n{symbol}\n")
+    print(colored(f"\n{symbol}\n{symbol} {msg}\n{symbol}\n", "yellow"))
