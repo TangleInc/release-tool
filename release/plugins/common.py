@@ -51,7 +51,7 @@ class Hooks:
 
 def print_error(msg, with_traceback=False):
     # Handle stderr manually (print colored text to stdout)
-    # because TravisCI will fuck this up: loose or misplace
+    # because TravisCI will try hard to confuse you: loose or misplace error log
     print(colored(msg, "red"))
     if with_traceback:
         traceback.print_exc(file=sys.stdout)
