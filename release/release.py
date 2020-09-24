@@ -43,11 +43,13 @@ def run(settings: Settings):
         release_task_key = jira_api.get_release_task()
 
     if settings.require_jira_links:
+        print("check jira links")
         assert release_task_key
 
         relations = github_api.get_related_tasks()
 
         if relations.pull_requests_without_task:
+            print("PR without tasks:")
             sys.stderr.write(
                 "Pull requests without tasks: {}\n".format(
                     ", ".join(map(str, relations.pull_requests_without_task))
@@ -55,6 +57,7 @@ def run(settings: Settings):
             )
 
         if not relations.tasks:
+            print("no tasks")
             sys.stderr.write("Did not find related tasks")
             exit(1)
 
