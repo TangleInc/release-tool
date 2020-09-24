@@ -20,6 +20,7 @@ class GetTaskResponse(NamedTuple):
 class GitHubAPI:
     def __init__(self, settings: Settings):
         self._api = Github(settings.github.token)
+        self._master_branch_name = settings.git.master
         self._release_branch_name = settings.release_branch_name
         self._task_re = re.compile(settings.github.task_re, flags=re.U | re.I)
         self.repository = self._get_repository()
@@ -38,8 +39,8 @@ class GitHubAPI:
     def get_commit_message_in_release(self):
         git.GitFuncs.fetch()()
         return subprocess.check_output(
-            "git log origin/master..origin/{} --pretty=%B".format(
-                self._release_branch_name
+            "git log origin/{}..origin/{} --pretty=%B".format(
+                self._master_branch_name, self._release_branch_name
             ),
             shell=True,
         ).decode("utf-8")
