@@ -1,7 +1,8 @@
 import subprocess
-import sys
 from functools import partial
 from typing import Callable, Optional
+
+from termcolor import colored
 
 
 symbol = "#"
@@ -24,9 +25,11 @@ class BashFunc:
         except Exception as exc:
             import traceback
 
-            print(f"ERROR params: {exc} {exc.__dict__}")
+            output = getattr(exc, "output", b"").decode("utf-8")
+
+            print_error(f"ERROR params: {exc}, Output:\n{output}")
             traceback.print_exc()
-            raise
+            exit(1)
         return output.decode("utf-8")
 
     def __str__(self):
@@ -49,7 +52,9 @@ class Hooks:
 
 
 def print_error(msg):
-    sys.stderr.write(f"{msg}\n")
+    # Handle stderr manually (print colored text to stdout)
+    # because TravisCI will fuck this up: loose or misplace
+    print(colored(msg, "red"))
 
 
 def print_title(msg):
