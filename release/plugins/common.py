@@ -1,6 +1,5 @@
 import subprocess
 import sys
-import traceback
 from functools import partial
 from typing import Callable, Optional
 
@@ -22,9 +21,10 @@ class BashFunc:
             output = subprocess.check_output(
                 str(self), shell=True, stderr=subprocess.STDOUT
             )
-        except Exception as exc:
-            print(f"ERROR params: {exc} {exc.__dict__}")
-            traceback.print_exc()
+        except Exception:
+            # import traceback
+            # print(f"ERROR params: {exc} {exc.__dict__}")
+            # traceback.print_exc()
             raise
         return output.decode("utf-8")
 

@@ -9,6 +9,9 @@ from .plugins.jira import JiraAPI
 
 
 def run(settings: Settings):
+    sys.stderr.write("ERROR")
+    exit(1)
+
     github_api = GitHubAPI(settings)
     jira_api = JiraAPI(settings)
 
