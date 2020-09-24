@@ -21,10 +21,11 @@ class BashFunc:
             output = subprocess.check_output(
                 str(self), shell=True, stderr=subprocess.STDOUT
             )
-        except Exception:
-            # import traceback
-            # print(f"ERROR params: {exc} {exc.__dict__}")
-            # traceback.print_exc()
+        except Exception as exc:
+            import traceback
+
+            print(f"ERROR params: {exc} {exc.__dict__}")
+            traceback.print_exc()
             raise
         return output.decode("utf-8")
 
