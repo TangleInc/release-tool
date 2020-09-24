@@ -52,9 +52,11 @@ class Hooks:
 def print_error(msg, with_traceback=False):
     # Handle stderr manually (print colored text to stdout)
     # because TravisCI will try hard to confuse you: loose or misplace error log
-    print(colored(msg, "red"))
     if with_traceback:
+        print()
         traceback.print_exc(file=sys.stdout)
+    print()
+    print(colored(msg, "red"))
 
 
 def print_title(msg):
