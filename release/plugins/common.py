@@ -1,4 +1,6 @@
 import subprocess
+import sys
+import traceback
 from functools import partial
 from typing import Callable, Optional
 
@@ -23,12 +25,8 @@ class BashFunc:
                 str(self), shell=True, stderr=subprocess.STDOUT
             )
         except Exception as exc:
-            import traceback
-
             output = getattr(exc, "output", b"").decode("utf-8")
-
-            print_error(f"ERROR params: {exc}, Output:\n{output}")
-            traceback.print_exc()
+            print_error(f"ERROR: {exc}, Output:\n{output}", with_traceback=True)
             exit(1)
         return output.decode("utf-8")
 
@@ -51,10 +49,12 @@ class Hooks:
             setattr(self, hook, partial(BashFunc, command))
 
 
-def print_error(msg):
+def print_error(msg, with_traceback=False):
     # Handle stderr manually (print colored text to stdout)
     # because TravisCI will fuck this up: loose or misplace
     print(colored(msg, "red"))
+    if with_traceback:
+        traceback.print_exc(file=sys.stdout)
 
 
 def print_title(msg):
