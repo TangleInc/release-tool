@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import traceback
 from functools import partial
 from typing import Callable, Optional
 
@@ -17,14 +18,23 @@ class BashFunc:
             return ""
 
         print(f"> {self}")
-        output = subprocess.check_output(str(self), shell=True)
+        try:
+            output = subprocess.check_output(
+                str(self), shell=True, stderr=subprocess.STDOUT
+            )
+        except Exception as exc:
+            print(f"ERROR params: {exc} {exc.__dict__}")
+            traceback.print_exc()
+            raise
         return output.decode("utf-8")
 
     def __str__(self):
         try:
             return self.func.format(**self.kwargs)
         except Exception as exc:
-            print_error(f"Error: {exc}. In formatting bash function: `{self.func}` with parameters: `{self.kwargs}`")
+            print_error(
+                f"Error: {exc}. In formatting bash function: `{self.func}` with parameters: `{self.kwargs}`"
+            )
             exit(1)
 
 
