@@ -2,9 +2,8 @@
 
 import sys
 
-from plugins.common import print_error
-
 from .plugins import git
+from .plugins.common import print_error
 from .plugins.conf import Settings
 from .plugins.github import GitHubAPI
 from .plugins.jira import JiraAPI
