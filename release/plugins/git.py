@@ -1,7 +1,7 @@
 from functools import partial
 from typing import Callable, Iterable
 
-from .common import BashFunc, print_error
+from .common import BashFunc, print_error, print_title
 from .conf import Settings
 
 
@@ -101,7 +101,7 @@ class GitFlows:
 
 def execute_commands(name, *commands: BashFunc):
 
-    print(f"Running suite: {name}\n")
+    print_title(f"Running suite: {name}")
     print("\n".join(map(str, commands)))
     print()
 
@@ -112,6 +112,6 @@ def execute_commands(name, *commands: BashFunc):
 def check_repo_changes():
     repo_changes = GitFuncs.check_repo_for_changes()()
     if repo_changes:
-        print_error('Your repo has changes, commit or stash them:')
+        print_error("Your repo has changes, commit or stash them:")
         print_error(repo_changes)
         exit(1)

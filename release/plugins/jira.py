@@ -1,10 +1,10 @@
 from datetime import datetime
 from functools import partial
+from multiprocessing.pool import ThreadPool
+from typing import Optional
 
 from jira import JIRA
 from jira.resources import Project, Version
-from multiprocessing.pool import ThreadPool
-
 
 from .common import print_error, print_title
 from .conf import Settings
@@ -36,20 +36,23 @@ class JiraAPI:
 
         return self._api.create_version(name, project, startDate=_get_formatted_date())
 
-    def _select_version(self, project: Project, unreleased_versions):
-        print("\nJira versions:")
-        print("1) Create new")
+    def _select_version(
+        self, project: Project, unreleased_versions
+    ) -> Optional[Version]:
+        print("Jira versions:")
+        print("1) Skip")
+        print("2) Create new")
         print("or select existing one:")
 
         unreleased_versions = {
-            idx: version for idx, version in enumerate(unreleased_versions, 2)
+            idx: version for idx, version in enumerate(unreleased_versions, 3)
         }
 
         for idx, version in unreleased_versions.items():
             print(f"{idx}) {version.name}")
 
         user_input = 0
-        valid_choices = list(range(1, len(unreleased_versions) + 2))
+        valid_choices = list(range(1, len(unreleased_versions) + 3))
 
         while user_input not in valid_choices:
             try:
@@ -60,11 +63,13 @@ class JiraAPI:
                 continue
 
         if user_input == 1:
+            return None
+        elif user_input == 2:
             return self._create_version(project)
         else:
             return unreleased_versions[user_input]
 
-    def get_version(self):
+    def get_version(self) -> Optional[Version]:
         print_title(f"Searching for Jira release version")
         project = self._api.project(self.release_task.project)
 
@@ -72,14 +77,7 @@ class JiraAPI:
             v for v in self._api.project_versions(project) if not v.released
         ]
 
-        if not unreleased_versions:
-            print("Not found any unreleased Jira version, creating one...")
-            version = self._create_version(project)
-        else:
-            version = self._select_version(project, unreleased_versions)
-
-        print(f"Jira version: {version.name}")
-        return version
+        return self._select_version(project, unreleased_versions)
 
     def _get_jira_release_unfinished_tasks(self, version: Version):
         """
@@ -134,30 +132,32 @@ class JiraAPI:
 
     def _add_to_release_version(self, version: Version, release_task_key: str):
         issue = self._api.issue(release_task_key)
-        issue.add_field_value('fixVersions', {'name': version.name})
+        issue.add_field_value("fixVersions", {"name": version.name})
 
-    def make_links(self, version: Version, release_task_key, related_keys):
+    def make_links(self, version: Optional[Version], release_task_key, related_keys):
+        version_name = version.name if version else "-"
         print_title(
             f"Linking tasks found in release branch"
             f" to release task ({release_task_key})"
-            f' and to Jira version "{version.name}"'
+            f' and to Jira version "{version_name}"'
         )
-        self._add_to_release_version(version, release_task_key)
+        if version:
+            self._add_to_release_version(version, release_task_key)
 
         print(f"Linking {len(related_keys)} tasks:")
-        partial_make_links = partial(
-            self._make_links, version, release_task_key
-        )
+        partial_make_links = partial(self._make_links, version, release_task_key)
         with ThreadPool(5) as pool:
             pool.map(partial_make_links, related_keys)
 
-    def _make_links(self, version, release_task_key, child_task_key):
+    def _make_links(
+        self, version: Optional[Version], release_task_key: str, child_task_key: str
+    ):
         print(f"* {child_task_key}")
         self._api.create_issue_link(
             self.release_task.link_type, release_task_key, child_task_key
         )
-
-        self._add_to_release_version(version, child_task_key)
+        if version:
+            self._add_to_release_version(version, child_task_key)
 
     def make_release_task(self):
         print_title("Creating Jira release task")
@@ -203,17 +203,18 @@ class JiraAPI:
         )
 
         release_issue = self._api.issue(release_task_key)
-        print_title(
-            f'Current release task status is "{release_issue.fields.status}"'
-        )
+        print_title(f'Current release task status is "{release_issue.fields.status}"')
 
-        if release_issue.fields.status.name.lower() != self.transition.release_from_status.lower():
-            print_error(
-                f'Release task "{release_task_key}" has inproper status'
-            )
+        if (
+            release_issue.fields.status.name.lower()
+            != self.transition.release_from_status.lower()
+        ):
+            print_error(f'Release task "{release_task_key}" has inproper status')
             return
 
-        transition = self._get_transition(release_issue, self.transition.release_to_status)
+        transition = self._get_transition(
+            release_issue, self.transition.release_to_status
+        )
 
         if not transition:
             print_error(
@@ -256,6 +257,7 @@ class JiraAPI:
             print(
                 f'Task {issue.key} has been transited to status "{transition["name"]}"'
             )
+
 
 def _get_formatted_date():
     return datetime.today().strftime("%Y-%m-%d")

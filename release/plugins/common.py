@@ -1,7 +1,10 @@
 import subprocess
 import sys
+import traceback
 from functools import partial
 from typing import Callable, Optional
+
+from termcolor import colored
 
 
 symbol = "#"
@@ -17,14 +20,23 @@ class BashFunc:
             return ""
 
         print(f"> {self}")
-        output = subprocess.check_output(str(self), shell=True)
+        try:
+            output = subprocess.check_output(
+                str(self), shell=True, stderr=subprocess.STDOUT
+            )
+        except Exception as exc:
+            output = getattr(exc, "output", b"").decode("utf-8")
+            print_error(f"ERROR: {exc}, Output:\n{output}", with_traceback=True)
+            exit(1)
         return output.decode("utf-8")
 
     def __str__(self):
         try:
             return self.func.format(**self.kwargs)
         except Exception as exc:
-            print_error(f"Error: {exc}. In formatting bash function: `{self.func}` with parameters: `{self.kwargs}`")
+            print_error(
+                f"Error: {exc}. In formatting bash function: `{self.func}` with parameters: `{self.kwargs}`"
+            )
             exit(1)
 
 
@@ -37,13 +49,19 @@ class Hooks:
             setattr(self, hook, partial(BashFunc, command))
 
 
-def print_error(msg):
-    sys.stderr.write(f"{msg}\n")
+def print_error(msg, with_traceback=False):
+    # Handle stderr manually (print colored text to stdout)
+    # because TravisCI will try hard to confuse you: loose or misplace error log
+    if with_traceback:
+        print()
+        traceback.print_exc(file=sys.stdout)
+    print()
+    print(colored(msg, "red"))
 
 
 def print_title(msg):
-    print(f"\n{symbol} {msg}\n")
+    print(colored(f"\n{symbol} {msg}\n", "green"))
 
 
 def print_section(msg):
-    print(f"\n{symbol}\n{symbol} {msg}\n{symbol}\n")
+    print(colored(f"\n{symbol}\n{symbol} {msg}\n{symbol}\n", "yellow"))

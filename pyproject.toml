@@ -10,6 +10,7 @@ PyGithub = "^1.43"
 jira = "^2.0"
 PyYAML = "^5.1"
 semver = "^2.8"
+termcolor = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
 

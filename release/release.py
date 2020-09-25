@@ -1,32 +1,34 @@
 #!/usr/bin/env python
-
-import sys
-
 from .plugins import git
+from .plugins.common import print_error
 from .plugins.conf import Settings
 from .plugins.github import GitHubAPI
 from .plugins.jira import JiraAPI
 
 
 def run(settings: Settings):
+
+    if settings.require_clean_repo:
+        git.check_repo_changes()
+
+    settings.parse_project_version()
     github_api = GitHubAPI(settings)
     jira_api = JiraAPI(settings)
 
-    if settings.require_jira_version:
+    if settings.require_jira_version and not settings.no_input:
         jira_version = jira_api.get_version()
     else:
         jira_version = None
+    print(f"Jira version: {jira_version.name if jira_version else '-'}")
 
     git_flows = git.GitFlows(settings)
 
     if settings.require_creation_of_release_branch:
         assert settings.hooks.set_version
-        git.check_repo_changes()
         git_flows.make_release_branch(release_set=settings.hooks.set_version)
 
     if settings.require_creation_of_hotfix_branch:
         assert settings.hooks.set_version
-        git.check_repo_changes()
         pulls = (github_api.repository.get_pull(pr) for pr in settings.prs)
         list_of_commit_sha = (
             pull.merge_commit_sha for pull in pulls if pull.merge_commit_sha
@@ -42,26 +44,26 @@ def run(settings: Settings):
         release_task_key = jira_api.get_release_task()
 
     if settings.require_jira_links:
+        print("check jira links")
         assert release_task_key
 
         relations = github_api.get_related_tasks()
 
         if relations.pull_requests_without_task:
-            sys.stderr.write(
-                "Pull requests without tasks: {}\n".format(
+            print_error(
+                "Pull requests without tasks: {}".format(
                     ", ".join(map(str, relations.pull_requests_without_task))
                 )
             )
 
         if not relations.tasks:
-            sys.stderr.write("Did not find related tasks")
-            exit(1)
-
-        jira_api.make_links(
-            version=jira_version,
-            release_task_key=release_task_key,
-            related_keys=relations.tasks,
-        )
+            print_error("Did not find related tasks")
+        else:
+            jira_api.make_links(
+                version=jira_version,
+                release_task_key=release_task_key,
+                related_keys=relations.tasks,
+            )
 
         print(
             "Made links from {} to {}".format(

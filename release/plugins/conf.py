@@ -1,12 +1,49 @@
 import argparse
+from dataclasses import MISSING, dataclass, fields
 from enum import Enum
-from pathlib import Path
-from typing import NamedTuple
 
 import yaml
 from semver import VersionInfo, bump_minor, bump_patch
 
 from .common import Hooks
+from .env import ENV_VARIABLE_NAMES, get_parameter
+
+
+class ParameterMixin:
+    SUBCLASSES = []
+
+    def __init_subclass__(cls, **kwargs):
+        # collect subclasses for validation
+        # validation can't be done here as dataclass decorator
+        # is not executed at this point
+        cls.SUBCLASSES.append(cls)
+
+    @classmethod
+    def validate(cls):
+        """Validate that all parameters have env variable representation"""
+        for subclass in cls.SUBCLASSES:
+            env_variable_names = ENV_VARIABLE_NAMES.get(subclass.__name__, {})
+            for field_name in subclass._parameter_defaults():
+                assert (
+                    field_name in env_variable_names
+                ), f'"{field_name}" has no env variable'
+
+    @classmethod
+    def from_config(cls, config: dict):
+        env_variable_names = ENV_VARIABLE_NAMES.get(cls.__name__, {})
+        return cls(
+            **{
+                name: get_parameter(config, name, env_variable_names.get(name), default)
+                for name, default in cls._parameter_defaults().items()
+            }
+        )
+
+    @classmethod
+    def _parameter_defaults(cls):
+        return {
+            field.name: None if field.default is MISSING else field.default
+            for field in fields(cls)
+        }
 
 
 class Command(str, Enum):
@@ -34,13 +71,15 @@ class Command(str, Enum):
         return {e.value for e in cls.__members__.values()}
 
 
-class JiraConnection(NamedTuple):
+@dataclass
+class JiraConnection(ParameterMixin):
     server: str
     user: str
     token: str
 
 
-class JiraReleaseTaskParams(NamedTuple):
+@dataclass
+class JiraReleaseTaskParams(ParameterMixin):
     project: str
     component: str
     name: str = "{component} release {version}"
@@ -48,52 +87,65 @@ class JiraReleaseTaskParams(NamedTuple):
     type: str = "Task"
 
 
-class JiraTaskTransitionParams(NamedTuple):
-    child_from_status = "To Deploy"
-    child_to_status = "Done"
-    child_final_statuses = (child_to_status, "Closed")
-    child_task_types_to_skip = ("Story",)
+@dataclass
+class JiraTaskTransitionParams(ParameterMixin):
+    child_from_status: str = "To Deploy"
+    child_to_status: str = "Done"
+    child_final_statuses: str = (child_to_status, "Closed")
+    child_task_types_to_skip: str = ("Story",)
 
-    release_from_status = "On Production"
-    release_to_status = "Release Merged"
+    release_from_status: str = "On Production"
+    release_to_status: str = "Release Merged"
+
 
 class JiraSettings:
     def __init__(self, **kwargs):
-        self.connection = JiraConnection(**kwargs["connection"])
-        self.release_task = JiraReleaseTaskParams(**kwargs["release_task"])
-        self.transition = JiraTaskTransitionParams(**kwargs.get("transition", {}))
+        self.connection = JiraConnection.from_config(kwargs["connection"])
+        self.release_task = JiraReleaseTaskParams.from_config(kwargs["release_task"])
+        self.transition = JiraTaskTransitionParams.from_config(
+            kwargs.get("transition", {})
+        )
 
 
-class GitHubSettings(NamedTuple):
+@dataclass
+class GitHubSettings(ParameterMixin):
     token: str
     task_re: str
 
 
-class GitSettings(NamedTuple):
+@dataclass
+class GitSettings(ParameterMixin):
     base: str = "develop"
     master: str = "master"
     release_name: str = "release-{version}"
 
 
 class Settings:
+    version: VersionInfo
+
     def __init__(self, config, args=None):
         if args:
             self._commands = set(args.commands)
             self.prs = args.pr
-            assert self.require_creation_of_hotfix_branch or not self.prs, "'--pr' should be specified only for hotfix"
+            self.no_input = args.noinput
+            assert (
+                self.require_creation_of_hotfix_branch or not self.prs
+            ), "'--pr' should be specified only for hotfix"
         else:
             # for debug purpose, to create settings without command line call
             self._commands = set()
             self.prs = ()
+            self.no_input = False
 
         self.jira = JiraSettings(**config.get("jira", {}))
-        self.git = GitSettings(**config.get("git", {}))
+        self.git = GitSettings.from_config(config.get("git", {}))
         self.hooks = Hooks(**config.get("hooks", {}))
-        self.github = GitHubSettings(**config.get("github", {}))
+        self.github = GitHubSettings.from_config(config.get("github", {}))
 
+    def parse_project_version(self):
         self.version = self._get_version()
 
-    def _get_version(self):
+    def _get_version(self) -> VersionInfo:
         proposed_version = VersionInfo.parse(self.hooks.get_version()())
 
         print(f"Current version: {proposed_version}")
@@ -102,6 +154,9 @@ class Settings:
             proposed_version = VersionInfo.parse(bump_minor(str(proposed_version)))
         if self.require_creation_of_hotfix_branch:
             proposed_version = VersionInfo.parse(bump_patch(str(proposed_version)))
+
+        if self.no_input:
+            return proposed_version
 
         version = None
         while version is None:
@@ -135,6 +190,22 @@ class Settings:
         )
 
     @property
+    def require_clean_repo(self) -> bool:
+        return bool(
+            self._commands
+            & {
+                Command.PREPARE,
+                Command.MAKE_BRANCH,
+                Command.HOTFIX,
+                Command.MAKE_HOTFIX_BRANCH,
+                Command.FINISH,
+                Command.MERGE_RELEASE,
+                Command.MERGE_TO_MASTER,
+                Command.MERGE_MASTER_TO_DEVELOP,
+            }
+        )
+
+    @property
     def require_jira_version(self) -> bool:
         return bool(
             self._commands & {Command.PREPARE, Command.HOTFIX, Command.MAKE_LINKS}
@@ -150,7 +221,12 @@ class Settings:
     def require_jira_task_search(self) -> bool:
         return bool(
             self._commands
-            & {Command.FINISH, Command.MAKE_LINKS, Command.MARK_CHILDREN_TASKS_DONE, Command.MARK_RELEASE_TASK_DONE}
+            & {
+                Command.FINISH,
+                Command.MAKE_LINKS,
+                Command.MARK_CHILDREN_TASKS_DONE,
+                Command.MARK_RELEASE_TASK_DONE,
+            }
         )
 
     @property
@@ -194,8 +270,16 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("commands", nargs="+", choices=list(Command.values()))
     parser.add_argument(
-        "--config", default=Path("release_tool.yml"), type=argparse.FileType("r")
+        "--config",
+        default="release_tool.yml",
+        type=str,
+        help="Path to config file (default release_tool.yml)",
     )
+
+    parser.add_argument(
+        "--noinput", help="run without user interaction", action="store_true"
+    )
+
     parser.add_argument(
         "--pr",
         action="append",
@@ -207,7 +291,7 @@ def _parse_args():
     return parser.parse_args()
 
 
-def _load_config_file(config_path):
+def _load_config_file(config_path: str):
     with open(config_path) as fo:
         return yaml.safe_load(fo.read())
 
@@ -230,8 +314,12 @@ def parse_and_combine_args() -> Settings:
     return Settings(config, args)
 
 
-def get_debug_settings(config_file: Path) -> Settings:
+def get_debug_settings(config_file: str) -> Settings:
     config = _load_config_file(config_file)
     config = _to_snake_case(config)
 
     return Settings(config)
+
+
+# validate subclasses after all of them are created
+ParameterMixin.validate()
