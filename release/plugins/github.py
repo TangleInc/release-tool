@@ -61,9 +61,6 @@ class GitHubAPI:
                 if not tasks:
                     left_pulls.add(pr_number)
 
-            if not pull_request_match:
-                continue
-
             all_tasks |= {task.upper() for task in tasks}
 
         return GetTaskResponse(
