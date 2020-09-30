@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 env
+.env
 .idea
 .python-version
 

@@ -30,7 +30,7 @@ pyenv virtualenv 3.7.3 {{ENV_NAME}}
 done once per repository
 ```bash
 pyenv local {{ENV_NAME}}
-pip install poetry==0.12.15
+pip install poetry==1.0.10
 
 # add `.python-version` to `.gitignore`
 ```
