@@ -182,7 +182,7 @@ class JiraAPI:
         found_issues = self._api.search_issues(query)
 
         if not found_issues:
-            print_error("Did not find existing release task")
+            print("Did not find existing release task")
             return self.make_release_task()
 
         if len(found_issues) > 1:
@@ -242,7 +242,7 @@ class JiraAPI:
         to_status = self.transition.child_to_status.lower()
 
         if not found_issues:
-            print_error("Did not find any task for transition")
+            print("Did not find any task for transition")
             return
 
         for issue in found_issues:

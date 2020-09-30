@@ -17,6 +17,9 @@ class GitFuncs:
     )
     delete_remote_branch = partial(BashFunc, "git push -q origin :{branch}")
 
+    # get actual updates to not accidentally commit newer version
+    submodule_update = partial(BashFunc, "git submodule update")
+
     cherry_pick = partial(BashFunc, "git cherry-pick {sha}")
     commit = partial(BashFunc, 'git commit --allow-empty -am "Release {version}"')
     push = partial(BashFunc, "git push -q -u origin {branch}")
@@ -59,6 +62,7 @@ class GitFlows:
             GitFuncs.create_release_branch(
                 source="develop", branch=self.release_branch
             ),
+            GitFuncs.submodule_update(),
             release_set(version=self.version),
             GitFuncs.commit(version=self.version),
             GitFuncs.push(branch=self.release_branch),
@@ -77,6 +81,7 @@ class GitFlows:
                 GitFuncs.cherry_pick(sha=commit_sha)
                 for commit_sha in list_of_commit_sha
             ],
+            GitFuncs.submodule_update(),
             release_set(version=self.version),
             GitFuncs.commit(version=self.version),
             GitFuncs.push(branch=self.release_branch),

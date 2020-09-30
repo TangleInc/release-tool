@@ -26,6 +26,7 @@ def run(settings: Settings):
     if settings.require_creation_of_release_branch:
         assert settings.hooks.set_version
         git_flows.make_release_branch(release_set=settings.hooks.set_version)
+        print("Made release branch")
 
     if settings.require_creation_of_hotfix_branch:
         assert settings.hooks.set_version
