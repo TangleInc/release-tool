@@ -48,8 +48,8 @@ jira:
 hooks:
   # Step 4. Choose you hooks
   # for backend:
-  get-version: python submodules/shared/src/deploy/scripts/release-utils.py get-version
-  set-version: python submodules/shared/src/deploy/scripts/release-utils.py set-version {version}
+  get-version: python submodules/shared/src/deploy/scripts/release_utils.py get-version
+  set-version: python submodules/shared/src/deploy/scripts/release_utils.py set-version {version}
 
   # for frontend:
   get-version: npm run --silent print-version
