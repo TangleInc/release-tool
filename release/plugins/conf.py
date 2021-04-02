@@ -146,7 +146,8 @@ class Settings:
         self.version = self._get_version()
 
     def _get_version(self) -> VersionInfo:
-        proposed_version = VersionInfo.parse(self.hooks.get_version()())
+        hook_result = self.hooks.get_version()()
+        proposed_version = VersionInfo.parse(hook_result.strip())
 
         print(f"Current version: {proposed_version}")
 
