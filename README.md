@@ -1,62 +1,176 @@
 # Release Tool
 
-## Init
+Table of Contents
 
-### Prerequisites:
+* [Release Tool](#release-tool)
+    * [1\. Usage](#1-usage)
+        * [1\.1\. Start release](#11-start-release)
+        * [1\.2\. Start hotfix](#12-start-hotfix)
+        * [1\.3\. Finish release](#13-finish-release)
+        * [1\.4\. Manual](#14-manual)
+    * [2\. Init](#2-init)
+        * [2\.1\. Prerequisites:](#21-prerequisites)
+            * [2\.1\.1\. Install poetry](#211-install-poetry)
+            * [2\.1\.2\. Install virtual env manager](#212-install-virtual-env-manager)
+        * [2\.2\. Configuration: for each local repository](#22-configuration-for-each-local-repository)
+            * [2\.2\.1\. Create virtual env](#221-create-virtual-env)
+            * [2\.2\.2\. Tell git to download submodule](#222-tell-git-to-download-submodule)
+            * [2\.2\.3\. Install dependencies](#223-install-dependencies)
+            * [2\.2\.4\. Create configuration file \./release\_tool\.yml](#224-create-configuration-file-release_toolyml)
+            * [2\.2\.5\. Create handy command \./release](#225-create-handy-command-release)
+        * [2\.3\. (Optional) How to integrate to new repository](#23-optional-how-to-integrate-to-new-repository)
 
-1. Install [poetry](https://github.com/sdispater/poetry) inside your virtualenv or in global python (preferable for python developers)
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
-2. Prepare virtual env with your tool of choice (like [pyenv](https://github.com/pyenv/pyenv)) based on python version specified in [pyproject.toml](./pyproject.toml)
-
-Example of how it can be done:
-
-done once per computer:
 ```bash
+gh-md-toc README.md
+```
+
+
+## 1. Usage
+
+```shell
+./release -h
+```
+
+> **Important:** during release creation the script alerts you about pull requests not linked to any task. You need to check these PRs manually to ensure everything is OK.
+
+### 1.1. Start release
+
+* creates `release-X.X.X` branch from `develop`
+* creates Jira release task `{component} release X.X.X`
+* detects new commits/PR linked to Jira tasks and links them to Jira release task
+* can also link tasks to Jira version (create new or use existing one)
+
+```shell
+./release prepare
+```
+
+### 1.2. Start hotfix
+
+* creates `release-X.X.X` branch from `master`
+* cherry pick specified pull requests using their numbers to a release branch
+* creates Jira release task `{component} release X.X.X`
+* detects new commits/PR linked to Jira tasks and links them to Jira release task
+* can also link tasks to Jira version (create new or use existing one)
+
+```shell
+# create hotfix without any commits
+./release hotfix
+# or cherry pick pull requests
+./release hotfix --pr=XXX --pr=...
+```
+
+### 1.3. Finish release
+
+* merge a release branch to master
+* mark the merge commit with a tag
+* merge `master` to `develop`
+* move jira tasks to final status ("Done" by default)
+
+```shell
+./release finish
+```
+
+### 1.4. Manual
+```shell
+# ./release prepare
+./release make-task
+./release make-branch
+./release make-links
+
+# ./release hotfix --pr=XXX --pr=...
+./release make-task
+./release make-hotfix-branch --pr=XXX --pr=...
+./release make-links
+
+# ./release finish
+./release merge-release
+./release mark-tasks-done
+
+# ./release merge-release
+./release merge-to-master
+./release merge-master-to-develop
+```
+
+
+## 2. Init
+
+### 2.1. Prerequisites:
+
+> &#x26a0;&#xfe0f; **Done once per each local machine**
+
+#### 2.1.1. Install poetry
+
+Install [poetry](https://github.com/sdispater/poetry) inside your virtualenv (prone to errors) or in a global python (preferable for python developers)
+
+```shell
+pip install poetry==1.0.10
+```
+
+#### 2.1.2. Install virtual env manager
+
+Install virtual env manager that you are comfortable with (like [pyenv](https://github.com/pyenv/pyenv)).
+
+Example:
+
+```shell
 brew install pyenv
 brew install pyenv-virtualenv
 
-# update your profile (e.g. `.bash_profile`)
-echo 'eval "$(pyenv init -)"' >> ~/.bash_profile
-echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bash_profile
+# this version is officially supports MacBook on M1 chipset
+pyenv install 3.8.10
+```
 
-# reload you bash
+Configuration choices:
+1. For permanent access to virtual environment put these lines to your shell config (e.g. `.bash_profile`) and then reload your shell
+```shell
+export PATH=${HOME}/.pyenv/bin
+eval "$(pyenv init --path)"
+eval "$(pyenv virtualenv-init -)"
+```
 
-# "socialfeed" is a project name where we are integrating release-tools
-pyenv install 3.7.3
+2. For one time run: simply save these lines or create alias. Then, each time you want to use release_tool you will need to execute them before running release_tool commands.
+
+3. While creating [handy command \./release](#225-create-handy-command-release) you can also configure shell environment
+
+After you created `./release` file, edit it to make it like that:
+
+```shell
+# these lines for pyenv and can be different for your virtual env manager
+export PATH=${HOME}/.pyenv/bin
+eval "$(pyenv init --path)"
+eval "$(pyenv virtualenv-init -)"
+
+python -m submodules.release_tool.release $*
+```
+
+
+### 2.2. Configuration: for each local repository
+
+> &#x26a0;&#xfe0f; **Done once per each local repository**
+
+#### 2.2.1. Create virtual env
+
+```shell
+cd {{project folder}}
+
 # choose appropriate ENV_NAME, e.g. socialfeed
-pyenv virtualenv 3.7.3 {{ENV_NAME}}
-```
-
-done once per repository
-```bash
+pyenv virtualenv 3.8.10 {{ENV_NAME}}
 pyenv local {{ENV_NAME}}
-pip install poetry==1.0.10
-
-# add `.python-version` to `.gitignore`
 ```
 
-### Step 1. Init submodule
+add `.python-version` to `.gitignore`
 
-```bash
-# cd (to your project folder)
+#### 2.2.2. Tell git to download submodule
+
+```shell
+git submodule update --init
 ```
 
-#### Option 1. Integration to project (done once per repository)
+#### 2.2.3. Install dependencies
 
-```bash
-# add release tool as a submodule
-git submodule add git@github.com:TangleInc/release-tool.git submodules/release_tool
-```
-
-#### Option 2. For developer to configure release tool
-
-```bash
-submodule update --init
-```
-
-### Step 2. Install dependencies
-
-```bash
+```shell
 # activate virtual env created in previous step
 cd submodules/release_tool
 poetry install
@@ -65,7 +179,7 @@ poetry install
 cd -
 ```
 
-### Step 3. Create configuration file
+#### 2.2.4. Create configuration file `./release_tool.yml`
 
 You need to create a config and provide your auth and other info there in order to login to Github and Jira.
 
@@ -74,72 +188,39 @@ select option repo: `Full control of private repositories`
 
 To get Jira token use [this doc](https://confluence.atlassian.com/cloud/api-tokens-938839638.html)
 
-```bash
+```shell
 # create a personal config, release_tool.yml is a name used by default, so it's strongly suggested
 cp submodules/release_tool/config-stub.full.yml release_tool.yml
 # add "release_tool.yml" to .gitignore 
 ```
 
-### Step 4. Create handy command
+#### 2.2.5. Create handy command `./release`
 
 To avoid typing long commands such as:
-```bash
+```shell
 python -m submodules.release_tool.release -h
 ```
 
 Make alias to use it like this `./release [command]`
-```bash
+```shell
 echo 'python -m submodules.release_tool.release $*' > release
 chmod +x release
 # you can either commit "release" or add it to .gitignore 
 ```
 
-## Usage
+### 2.3. (Optional) How to integrate to new repository
 
-Now you do the magic!
+> &#x26a0;&#xfe0f; **Done only once per repository**
 
-```bash
-./release -h
+To start using release_tool in your project add it as a git submodule.
+
+```shell
+# add release tool as a submodule
+git submodule add git@github.com:TangleInc/release-tool.git submodules/release_tool
+
+git add submodules/release_tool
+git commit -m "Integrate release_tool"
+git push
 ```
 
-**Important:** during release creation the script alerts you about pull requests not linked to any task. You need to check these PRs manually to ensure everything is OK.
-
-### New full branch release
-
-Make a release branch from the entire `develop`.
-
-```bash
-./release prepare
-```
-
-### New specific commits release
-
-Cherry pick specified pull requests using their numbers to a release branch.
-
-```bash
-./release hotfix --pr=XXX --pr=...
-```
-
-### Finish release
-
-Merge a release branch to master, mark the merge commit with a tag and merge `master` to `develop`. Also move jira tasks and release as "Done".
-
-```bash
-./release finish
-```
-
-### Manual
-```bash
-./release make-task
-
-# release / hotfix
-./release make-branch
-./release make-hotfix-branch --pr=XXX --pr=...
-./release make-links
-./release merge-release
-./release merge-to-master
-./release merge-master-to-develop
-./release mark-tasks-done
-
-
-```
+Then configure your local installation of release_tool check this guide [2\.2\. Configuration: for each local repository](#22-configuration-for-each-local-repository)
