@@ -1,7 +1,6 @@
 # Release Tool
 
 Table of Contents
-=================
 
 * [Release Tool](#release-tool)
     * [1\. Usage](#1-usage)
