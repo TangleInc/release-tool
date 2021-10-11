@@ -1,23 +1,31 @@
 # Release Tool
 
-Table of contents:
+Table of Contents
+=================
 
-* [1. Usage](1-Usage)
-    * [1.1. Start release](11-Start-release)
-    * [1.2. Start hotfix](12-Start-hotfix)
-    * [1.3. Finish release](13-Finish-release)
-    * [1.4. Manual](14-Manual)
-* [2. Init](2-Init)
-    * [2.1. Prerequisites:](21-Prerequisites)
-        * [2.1.1. Install poetry](211-Install poetryhttpsgithubcomsdispaterpoetry)
-        * [2.1.2. Install virtual env manager](212-Install-virtual-env-manager)
-    * [2.2. Configuration: for each local repository](22-Configuration-for-each-local-repository)
-        * [2.2.1. Create virtual env](221-Create virtual env)
-        * [2.2.2. Tell git to download submodule](222-Tell git to download submodule)
-        * [2.2.3. Install dependencies](223-Install dependencies)
-        * [2.2.4. Create configuration file `./release_tool.yml`](224-Create-configuration-file-release_toolyml)
-        * [2.2.5. Create handy command `./release`](225-Create-handy-command-release)
-    * [2.3. (Optional) How to integrate to new repository](23-Optional-How-to-integrate-to-new-repository)
+* [Release Tool](#release-tool)
+    * [1\. Usage](#1-usage)
+        * [1\.1\. Start release](#11-start-release)
+        * [1\.2\. Start hotfix](#12-start-hotfix)
+        * [1\.3\. Finish release](#13-finish-release)
+        * [1\.4\. Manual](#14-manual)
+    * [2\. Init](#2-init)
+        * [2\.1\. Prerequisites:](#21-prerequisites)
+            * [2\.1\.1\. Install poetry](#211-install-poetry)
+            * [2\.1\.2\. Install virtual env manager](#212-install-virtual-env-manager)
+        * [2\.2\. Configuration: for each local repository](#22-configuration-for-each-local-repository)
+            * [2\.2\.1\. Create virtual env](#221-create-virtual-env)
+            * [2\.2\.2\. Tell git to download submodule](#222-tell-git-to-download-submodule)
+            * [2\.2\.3\. Install dependencies](#223-install-dependencies)
+            * [2\.2\.4\. Create configuration file \./release\_tool\.yml](#224-create-configuration-file-release_toolyml)
+            * [2\.2\.5\. Create handy command \./release](#225-create-handy-command-release)
+        * [2\.3\. (Optional) How to integrate to new repository](#23-optional-how-to-integrate-to-new-repository)
+
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
+
+```bash
+gh-md-toc README.md
+```
 
 
 ## 1. Usage
@@ -93,7 +101,7 @@ Table of contents:
 
 > &#x26a0;&#xfe0f; **Done once per each local machine**
 
-#### 2.1.1. Install [poetry](https://github.com/sdispater/poetry)
+#### 2.1.1. Install poetry
 
 Install [poetry](https://github.com/sdispater/poetry) inside your virtualenv (prone to errors) or in a global python (preferable for python developers)
 
@@ -125,7 +133,7 @@ eval "$(pyenv virtualenv-init -)"
 
 2. For one time run: simply save these lines or create alias. Then, each time you want to use release_tool you will need to execute them before running release_tool commands.
 
-3. While creating [handy command](#225-Create-handy-command-release`) you can also configure shell environment
+3. While creating [handy command \./release](#225-create-handy-command-release) you can also configure shell environment
 
 After you created `./release` file, edit it to make it like that:
 
@@ -216,4 +224,4 @@ git commit -m "Integrate release_tool"
 git push
 ```
 
-Then configure your local installation of release_tool check this guide [2.2. Configuration: for each local repository](#22-Configuration-for-each-local-repository)
+Then configure your local installation of release_tool check this guide [2\.2\. Configuration: for each local repository](#22-configuration-for-each-local-repository)
