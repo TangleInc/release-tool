@@ -165,7 +165,7 @@ add `.python-version` to `.gitignore`
 #### 2.2.2. Tell git to download submodule
 
 ```shell
-submodule update --init
+git submodule update --init
 ```
 
 #### 2.2.3. Install dependencies
