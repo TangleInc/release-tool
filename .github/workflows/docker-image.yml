@@ -32,8 +32,10 @@ jobs:
         with:
           context: .
           file: ./docker/Dockerfile
-          push: true
           tags: ${{ secrets.DOCKER_HUB_LOGIN }}/${{ secrets.DOCKER_IMAGE_NAME }}:latest
+          # build on feature branches, push only on main branch
+          push: ${{ github.ref == 'refs/heads/master' }}
+
           # GitHubActions cache
           cache-from: type=gha
           cache-to: type=gha,mode=max
