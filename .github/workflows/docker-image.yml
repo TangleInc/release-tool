@@ -34,7 +34,7 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_HUB_LOGIN }}/${ secrets.DOCKER_IMAGE_NAME }:latest
+          tags: ${{ secrets.DOCKER_HUB_LOGIN }}/${{ secrets.DOCKER_IMAGE_NAME }}:latest
           # GitHubActions cache
           cache-from: type=gha
           cache-to: type=gha,mode=max
