@@ -5,7 +5,7 @@ description = "A tool that automate managing releases, integrates with Jira and 
 authors = ["Valentin Kuznetsov <aimestereo@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.10.4"
 PyGithub = "^1.43"
 jira = "^2.0"
 PyYAML = "^5.1"
@@ -13,6 +13,7 @@ semver = "^2.8"
 termcolor = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
+pre-commit = "^2.19.0"
 
 [build-system]
 requires = ["poetry>=1.0.10"]
