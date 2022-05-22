@@ -10,6 +10,8 @@ ENV PYTHONUNBUFFERED 1
 RUN apt-get update && apt-get install -y \
     # required to manage release branches
     git \
+	# to get/set version in json files
+	jq \
     # clean
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,10 +25,6 @@ COPY poetry.lock /poetry.lock
 COPY pyproject.toml /pyproject.toml
 RUN poetry install
 
-# Install deployment dependencies
-# would be great to drop them
-RUN pip3 install awscli click==7.0
-
 # place of release-tool
 COPY . /release_tool/
 ENV PYTHONPATH="/release_tool:${PYTHONPATH}"
@@ -34,4 +32,4 @@ ENV PYTHONPATH="/release_tool:${PYTHONPATH}"
 # place of application that release-tool will be applied to
 WORKDIR /app
 
-ENTRYPOINT ["python", "-m", "release", "--noinput"]
+ENTRYPOINT ["python", "-m", "release"]
