@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+
+#
+# Handy script for release-tool with shortcuts
+# https://github.com/TangleInc/release-tool
+#
+
+set -o errexit
+set -o pipefail
+set -o nounset
+#set -o xtrace
+
+
+# provide relative path to release-tool config file
+RELEASE_TOOL_CONFIG="release_tool.yml"
+RELEASE_TOOL_CI_CONFIG="release_tool.ci.yml"
+
+
+# auto detect if it's a Frontend or Backend repo
+FILE="package.json"
+if test -f "${FILE}"; then
+    get_version=get_frontend_version
+    set_version=set_frontend_version
+else
+    get_version=get_backend_version
+    set_version=set_backend_version
+fi
+
+
+function run_release_tool_natively() {
+    # Old/native way to use release-tool,
+    # better use `run_release_tool_in_docker`.
+
+    # These lines for pyenv and can be different
+    # for your virtual env manager
+    PYENV_PATH=${HOME}/.pyenv/bin
+
+    # run in subshell, to not override parent shell PATH,
+    # or environment variables, can be useful for frontends
+    # who don't need initialized `pyenv`
+    (
+        export PATH=${PYENV_PATH}:${PATH}
+        eval "$(pyenv init --path)"
+        eval "$(pyenv virtualenv-init -)"
+
+        python \
+            -m submodules.release_tool.release \
+            --config=${RELEASE_TOOL_CONFIG} \
+            "$@"
+    )
+}
+
+
+function run_release_tool_in_docker() {
+    # preferable usage of release-tool
+    docker run --rm \
+        --volume $(pwd):/app \
+        statusmoney/release-tool \
+        --config=${RELEASE_TOOL_CONFIG} \
+        "$@"
+}
+
+
+function run_release_tool_for_travis() {
+    # Set this env parameters in TravisCI:
+    # * RELEASE_TOOL_GITHUB_TOKEN
+    # * RELEASE_TOOL_JIRA_TOKEN
+
+    docker run --rm \
+        --volume $(pwd):/app \
+        --env RELEASE_TOOL_GITHUB_TOKEN \
+        --env RELEASE_TOOL_JIRA_TOKEN \
+        statusmoney/release-tool \
+        --config=${RELEASE_TOOL_TRAVIS_CONFIG} \
+        --noinput \
+        "$@"
+}
+
+
+function get_backend_version() {
+    cat pyproject.toml | grep -e '^version = "' | sed -E 's/.*"(.+)".*\s*/\1/'
+}
+
+
+function set_backend_version() {
+    version=$1
+    version_line="version = \"${version}\""
+
+    sed -i '' -E "s/^version = \"(.+)\".*\s*/${version_line}/" pyproject.toml
+}
+
+
+function get_frontend_version() {
+    cat package.json | jq -r '.version'
+}
+
+
+function _set_frontend_version() {
+    version=$1
+    filename=$2
+
+    cat ${filename} \
+        | jq -r ".version = \"${version}\"" \
+        > "tmp.${filename}" \
+        && mv "tmp.${filename}" ${filename}
+}
+
+function set_frontend_version() {
+    version=$1
+    _set_frontend_version ${version} package.json
+    _set_frontend_version ${version} package-lock.json
+}
+
+# Parse CLI params
+# ---------------------------------------------------------
+
+case "${1:-}" in
+
+# Specialized commands:
+
+"get-backend-version")
+    # example: ./release get-backend-version
+    get_backend_version
+    ;;
+"set-backend-version")
+    # example: ./release set-backend-version 1.0.0
+    set_backend_version $2
+    ;;
+
+"get-frontend-version")
+    # example: ./release get-frontend-version
+    get_frontend_version
+    ;;
+"set-frontend-version")
+    # example: ./release set-frontend-version 1.0.0
+    set_frontend_version $2
+    ;;
+
+"run-in-docker")
+    # example: ./release run-in-docker make-links
+    run_release_tool_in_docker "${@:2}"
+    ;;
+"run-native")
+    # example: ./release run-native make-links
+    run_release_tool_natively "${@:2}"
+    ;;
+
+"travis")
+    # example: ./release travis make-links
+    run_release_tool_for_travis "${@:2}"
+    ;;
+
+
+# Commonly used commands:
+
+"get-version")
+    # example: ./release get-version
+    ${get_version}
+    ;;
+"set-version")
+    # example: ./release set-version 1.0.0
+    ${set_version} $2
+    ;;
+*)
+    # example: ./release make-links
+    run_release_tool_in_docker "${@:1}"
+    ;;
+esac

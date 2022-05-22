@@ -1,0 +1,26 @@
+# Config file for release-tool
+# https://github.com/TangleInc/release-tool
+
+github:
+  task-re: SM-\d+
+  token: `RELEASE_TOOL_GITHUB_TOKEN` set in CI (.travis.yml)
+
+jira:
+  connection:
+    server: https://tangle.atlassian.net
+    # StatusMoney_TravisBot
+    user: statustravisbuildbot@statusmoney.com
+    token: `RELEASE_TOOL_JIRA_TOKEN` set in CI (.travis.yml)
+  release-task:
+    project: SM
+    type: Release
+
+    # choose your component:
+    component: Frontend
+    component: Native
+    component: BSF
+    component: BSM
+
+hooks:
+  get-version: ./release get-version
+  set-version: ./release set-version {version}
