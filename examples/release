@@ -71,7 +71,7 @@ function run_release_tool_for_travis() {
         --env RELEASE_TOOL_GITHUB_TOKEN \
         --env RELEASE_TOOL_JIRA_TOKEN \
         statusmoney/release-tool \
-        --config=${RELEASE_TOOL_TRAVIS_CONFIG} \
+        --config=${RELEASE_TOOL_CI_CONFIG} \
         --noinput \
         "$@"
 }
