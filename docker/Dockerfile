@@ -3,7 +3,7 @@
 # 1. it requires release/deploy tools.
 # 2. it doesn't bake in project dependencies at the build stage
 #
-FROM brunneis/python:3.7.7-ubuntu-18.04
+FROM python:3.10.4-slim
 
 ENV PYTHONUNBUFFERED 1
 
