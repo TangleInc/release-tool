@@ -1,13 +1,13 @@
-docker-login:
+login:
 	docker login -u $(DOCKER_LOGIN) -p $(DOCKER_TOKEN)
 
-docker-build:
+build:
 	docker build -t statusmoney/release-tool:latest -f docker/Dockerfile .
 
-docker-push:
+push:
 	docker push statusmoney/release-tool:latest
 
-docker-shell:
+shell:
 	# to run bash shell inside docker container
 	docker run -it --rm \
 		--volume $(shell pwd):/app \
