@@ -21,7 +21,9 @@ class GitFuncs:
     submodule_update = partial(BashFunc, "git submodule update")
 
     cherry_pick = partial(BashFunc, "git cherry-pick {sha}")
-    commit = partial(BashFunc, 'git commit --allow-empty -am "Release {version}"')
+    commit = partial(
+        BashFunc, 'git commit --allow-empty --no-verify -am "Release {version}"'
+    )
     push = partial(BashFunc, "git push -q -u origin {branch}")
     checkout = partial(BashFunc, "git checkout -q {branch}")
     hard_reset = partial(BashFunc, "git reset -q --hard {branch}")
@@ -29,7 +31,8 @@ class GitFuncs:
     create_tag = partial(BashFunc, "git tag {version}")
     push_tag = partial(BashFunc, "git push -q origin {version}")
     merge = partial(
-        BashFunc, 'git merge -q --commit --no-ff {branch} -m "Merge, {branch}"'
+        BashFunc,
+        'git merge -q --commit --no-ff --no-verify {branch} -m "Merge, {branch}"',
     )
 
 
