@@ -98,8 +98,12 @@ function get_backend_version() {
 function set_backend_version() {
     version=$1
     version_line="version = \"${version}\""
+    filename="pyproject.toml"
 
-    sed -i '' -E "s/^version = \"(.+)\".*\s*/${version_line}/" pyproject.toml
+    sed -E \
+        "s/^version = \"(.+)\".*\s*/${version_line}/" \
+        "${filename}" > "${filename}.tmp"
+    mv "${filename}.tmp" "${filename}"
 }
 
 
@@ -114,8 +118,8 @@ function _set_frontend_version() {
 
     cat ${filename} \
         | jq -r ".version = \"${version}\"" \
-        > "tmp.${filename}" \
-        && mv "tmp.${filename}" ${filename}
+        > "${filename}.tmp" \
+        && mv "${filename}.tmp" ${filename}
 }
 
 function set_frontend_version() {
