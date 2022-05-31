@@ -55,6 +55,7 @@ function run_docker_shell() {
     # to run bash shell inside release-tool docker container
     docker run -it --rm \
 		--volume $(pwd):/app \
+        --volume ~/.gitignore_global:/root/.gitignore_global \
 		--entrypoint bash \
 		statusmoney/release-tool
 }
@@ -64,6 +65,7 @@ function run_release_tool_in_docker() {
     # preferable usage of release-tool
     docker run -it --rm \
         --volume $(pwd):/app \
+        --volume ~/.gitignore_global:/root/.gitignore_global \
         statusmoney/release-tool \
         --config=${RELEASE_TOOL_CONFIG} \
         "$@"
