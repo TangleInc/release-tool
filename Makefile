@@ -8,8 +8,5 @@ push:
 	docker push statusmoney/release-tool:latest
 
 shell:
-	# to run bash shell inside docker container
-	docker run -it --rm \
-		--volume $(shell pwd):/app \
-		--entrypoint bash \
-		statusmoney/release-tool
+	# to run bash shell inside release-tool docker container
+	bash examples/release shell

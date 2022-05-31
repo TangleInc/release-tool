@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y \
     # clean
     && rm -rf /var/lib/apt/lists/*
 
+# Prepare global gitignore
+RUN git config --global core.excludesFile /root/.gitignore_global
+
 # Install installation tools
 RUN pip3 install --upgrade pip \
     && pip3 install poetry==1.1.10 \
