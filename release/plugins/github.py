@@ -9,7 +9,7 @@ from .conf import Settings
 
 
 PR_RE = re.compile(r"#(\d+)", flags=re.U | re.I)
-REPO_RE = re.compile(r"[/:]([-\w_]+/[-\w_]+)\.git")
+REPO_RE = re.compile(r"[/:]([-\w_]+/[-\w_]+)(\.git)?")
 
 
 class GetTaskResponse(NamedTuple):
@@ -27,9 +27,8 @@ class GitHubAPI:
         self.skip_git_fetch = settings.skip_git_fetch
 
     def _get_repository(self):
-        github_repo_match = REPO_RE.search(
-            subprocess.check_output("git remote -v", shell=True).decode("utf-8")
-        )
+        output = subprocess.check_output("git remote -v", shell=True).decode("utf-8")
+        github_repo_match = REPO_RE.search(output)
         assert github_repo_match
         return self._api.get_repo(github_repo_match.group(1))
 
