@@ -123,11 +123,14 @@ class GitSettings(ParameterMixin):
 class Settings:
     version: VersionInfo
 
+    skip_git_fetch = False
+
     def __init__(self, config, args=None):
         if args:
             self._commands = set(args.commands)
             self.prs = args.pr
             self.no_input = args.noinput
+            self.skip_git_fetch = args.skip_git_fetch
             assert (
                 self.require_creation_of_hotfix_branch or not self.prs
             ), "'--pr' should be specified only for hotfix"
@@ -287,6 +290,11 @@ def _parse_args():
         type=int,
         default=[],
         help="Github pull request for hotfix release",
+    )
+    parser.add_argument(
+        "--skip-git-fetch",
+        action="store_true",
+        help="Skip fetching new changes from remote",
     )
 
     return parser.parse_args()

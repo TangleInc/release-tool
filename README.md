@@ -1,24 +1,19 @@
 # Release Tool
 
 Table of Contents
+=================
 
 * [Release Tool](#release-tool)
-    * [1\. Usage](#1-usage)
-        * [1\.1\. Start release](#11-start-release)
-        * [1\.2\. Start hotfix](#12-start-hotfix)
-        * [1\.3\. Finish release](#13-finish-release)
-        * [1\.4\. Manual](#14-manual)
-    * [2\. Init](#2-init)
-        * [2\.1\. Prerequisites:](#21-prerequisites)
-            * [2\.1\.1\. Install poetry](#211-install-poetry)
-            * [2\.1\.2\. Install virtual env manager](#212-install-virtual-env-manager)
-        * [2\.2\. Configuration: for each local repository](#22-configuration-for-each-local-repository)
-            * [2\.2\.1\. Create virtual env](#221-create-virtual-env)
-            * [2\.2\.2\. Tell git to download submodule](#222-tell-git-to-download-submodule)
-            * [2\.2\.3\. Install dependencies](#223-install-dependencies)
-            * [2\.2\.4\. Create configuration file \./release\_tool\.yml](#224-create-configuration-file-release_toolyml)
-            * [2\.2\.5\. Create handy command \./release](#225-create-handy-command-release)
-        * [2\.3\. (Optional) How to integrate to new repository](#23-optional-how-to-integrate-to-new-repository)
+  * [1\. Usage](#1-usage)
+    * [1\.1\. Start release](#11-start-release)
+    * [1\.2\. Start hotfix](#12-start-hotfix)
+    * [1\.3\. Finish release](#13-finish-release)
+    * [1\.4\. Manual](#14-manual)
+  * [2\. Init](#2-init)
+    * [2\.1 Installation (as a docker container)](#21-installation-as-a-docker-container)
+    * [2\.2 Configuration](#22-configuration)
+    * [2\.2\.1 Secrets: GitHub token](#221-secrets-github-token)
+    * [2\.2\.1 Secrets: Jira token](#221-secrets-jira-token)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
@@ -96,131 +91,40 @@ gh-md-toc README.md
 
 ## 2. Init
 
-### 2.1. Prerequisites:
+### 2.1 Installation (as a docker container)
 
-> &#x26a0;&#xfe0f; **Done once per each local machine**
+> &#x26a0;&#xfe0f; **Done once per each computer**
 
-#### 2.1.1. Install poetry
+1. Install docker
+2. login to TangleInc docker account: 
 
-Install [poetry](https://github.com/sdispater/poetry) inside your virtualenv (prone to errors) or in a global python (preferable for python developers)
-
-```shell
-pip install poetry==1.0.10
+```bash
+docker login -u statusmoney -p <DOCKER_TOKEN>
 ```
 
-#### 2.1.2. Install virtual env manager
-
-Install virtual env manager that you are comfortable with (like [pyenv](https://github.com/pyenv/pyenv)).
-
-Example:
-
-```shell
-brew install pyenv
-brew install pyenv-virtualenv
-
-# this version is officially supports MacBook on M1 chipset
-pyenv install 3.8.10
+3. Download the latest image:
+   
+```bash
+docker pull statusmoney/release-tool:latest
 ```
 
-Configuration choices:
-1. For permanent access to virtual environment put these lines to your shell config (e.g. `.bash_profile`) and then reload your shell
-```shell
-export PATH=${HOME}/.pyenv/bin
-eval "$(pyenv init --path)"
-eval "$(pyenv virtualenv-init -)"
-```
+### 2.2 Configuration
 
-2. For one time run: simply save these lines or create alias. Then, each time you want to use release_tool you will need to execute them before running release_tool commands.
+> &#x26a0;&#xfe0f; **Done once per each repo**
 
-3. While creating [handy command \./release](#225-create-handy-command-release) you can also configure shell environment
+Copy the latest script and config files from ure: add  to your project root (See [examples](examples)).
 
-After you created `./release` file, edit it to make it like that:
+* `release` - handy shortcuts - make executable and add to git
+* `release_tool.yml` - config file for local machine - **add to .gitignore**
+* `release_tool.ci.yml` - config file for CI - verify parameters (such as `component`) and add to git
 
-```shell
-# these lines for pyenv and can be different for your virtual env manager
-export PATH=${HOME}/.pyenv/bin
-eval "$(pyenv init --path)"
-eval "$(pyenv virtualenv-init -)"
+Next, in order to set up integration with GitHub and Jira, secret tokens should be added to `release.yml` (as-is) and to `travis.yml` (encrypted with `travis encrypt <secret>`).
 
-python -m submodules.release_tool.release $*
-```
-
-
-### 2.2. Configuration: for each local repository
-
-> &#x26a0;&#xfe0f; **Done once per each local repository**
-
-#### 2.2.1. Create virtual env
-
-```shell
-cd {{project folder}}
-
-# choose appropriate ENV_NAME, e.g. socialfeed
-pyenv virtualenv 3.8.10 {{ENV_NAME}}
-pyenv local {{ENV_NAME}}
-```
-
-add `.python-version` to `.gitignore`
-
-#### 2.2.2. Tell git to download submodule
-
-```shell
-git submodule update --init
-```
-
-#### 2.2.3. Install dependencies
-
-```shell
-# activate virtual env created in previous step
-cd submodules/release_tool
-poetry install
-
-# return to project folder
-cd -
-```
-
-#### 2.2.4. Create configuration file `./release_tool.yml`
-
-You need to create a config and provide your auth and other info there in order to login to Github and Jira.
+### 2.2.1 Secrets: GitHub token
 
 To get Github token `Settings` -> `Developer settings` -> `Personal access tokens` -> `Generate new token`
 select option repo: `Full control of private repositories`
 
+### 2.2.1 Secrets: Jira token
+
 To get Jira token use [this doc](https://confluence.atlassian.com/cloud/api-tokens-938839638.html)
-
-```shell
-# create a personal config, release_tool.yml is a name used by default, so it's strongly suggested
-cp submodules/release_tool/config-stub.full.yml release_tool.yml
-# add "release_tool.yml" to .gitignore 
-```
-
-#### 2.2.5. Create handy command `./release`
-
-To avoid typing long commands such as:
-```shell
-python -m submodules.release_tool.release -h
-```
-
-Make alias to use it like this `./release [command]`
-```shell
-echo 'python -m submodules.release_tool.release $*' > release
-chmod +x release
-# you can either commit "release" or add it to .gitignore 
-```
-
-### 2.3. (Optional) How to integrate to new repository
-
-> &#x26a0;&#xfe0f; **Done only once per repository**
-
-To start using release_tool in your project add it as a git submodule.
-
-```shell
-# add release tool as a submodule
-git submodule add git@github.com:TangleInc/release-tool.git submodules/release_tool
-
-git add submodules/release_tool
-git commit -m "Integrate release_tool"
-git push
-```
-
-Then configure your local installation of release_tool check this guide [2\.2\. Configuration: for each local repository](#22-configuration-for-each-local-repository)

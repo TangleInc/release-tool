@@ -21,7 +21,9 @@ class GitFuncs:
     submodule_update = partial(BashFunc, "git submodule update")
 
     cherry_pick = partial(BashFunc, "git cherry-pick {sha}")
-    commit = partial(BashFunc, 'git commit --allow-empty -am "Release {version}"')
+    commit = partial(
+        BashFunc, 'git commit --allow-empty --no-verify -am "Release {version}"'
+    )
     push = partial(BashFunc, "git push -q -u origin {branch}")
     checkout = partial(BashFunc, "git checkout -q {branch}")
     hard_reset = partial(BashFunc, "git reset -q --hard {branch}")
@@ -29,13 +31,15 @@ class GitFuncs:
     create_tag = partial(BashFunc, "git tag {version}")
     push_tag = partial(BashFunc, "git push -q origin {version}")
     merge = partial(
-        BashFunc, 'git merge -q --commit --no-ff {branch} -m "Merge, {branch}"'
+        BashFunc,
+        'git merge -q --commit --no-ff --no-verify {branch} -m "Merge, {branch}"',
     )
 
 
 class GitFlows:
     def __init__(self, settings: Settings):
         self.version = settings.version
+        self.skip_git_fetch = settings.skip_git_fetch
         self.release_branch = settings.git.release_name.format(version=self.version)
 
     def _create_tag(self) -> Iterable[BashFunc]:
@@ -58,7 +62,7 @@ class GitFlows:
 
         execute_commands(
             "Make release branch",
-            GitFuncs.fetch(),
+            *self._get_git_fetch_commands(),
             GitFuncs.create_release_branch(
                 source="develop", branch=self.release_branch
             ),
@@ -70,12 +74,18 @@ class GitFlows:
 
         print("Created release branch")
 
+    def _get_git_fetch_commands(self):
+        if self.skip_git_fetch:
+            return ()
+        else:
+            return (GitFuncs.fetch(),)
+
     def make_hotfix_branch(
         self, list_of_commit_sha, release_set: Callable[..., BashFunc]
     ):
         execute_commands(
             "Make hotfix branch",
-            GitFuncs.fetch(),
+            *self._get_git_fetch_commands(),
             GitFuncs.create_release_branch(source="master", branch=self.release_branch),
             *[
                 GitFuncs.cherry_pick(sha=commit_sha)
@@ -88,19 +98,22 @@ class GitFlows:
         )
 
     def merge_release_to_master(self):
-        execute_commands("Create tag", GitFuncs.fetch(), *self._create_tag())
+        execute_commands(
+            "Create tag",
+            *self._get_git_fetch_commands(),
+            *self._create_tag(),
+        )
         execute_commands(
             "Merge release to master",
             *self._merge(source=self.release_branch, target="master"),
             GitFuncs.delete_remote_branch(branch=self.release_branch),
         )
 
-    @classmethod
-    def merge_master_to_develop(cls):
+    def merge_master_to_develop(self):
         execute_commands(
             "Merge master to develop",
-            GitFuncs.fetch(),
-            *cls._merge(source="master", target="develop"),
+            *self._get_git_fetch_commands(),
+            *self._merge(source="master", target="develop"),
         )
 
 

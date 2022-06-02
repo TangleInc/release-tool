@@ -9,7 +9,7 @@ from .conf import Settings
 
 
 PR_RE = re.compile(r"#(\d+)", flags=re.U | re.I)
-REPO_RE = re.compile(r"[/:]([-\w_]+/[-\w_]+)\.git")
+REPO_RE = re.compile(r"[/:]([-\w_]+/[-\w_]+)(\.git)?")
 
 
 class GetTaskResponse(NamedTuple):
@@ -24,11 +24,11 @@ class GitHubAPI:
         self._release_branch_name = settings.release_branch_name
         self._task_re = re.compile(settings.github.task_re, flags=re.U | re.I)
         self.repository = self._get_repository()
+        self.skip_git_fetch = settings.skip_git_fetch
 
     def _get_repository(self):
-        github_repo_match = REPO_RE.search(
-            subprocess.check_output("git remote -v", shell=True).decode("utf-8")
-        )
+        output = subprocess.check_output("git remote -v", shell=True).decode("utf-8")
+        github_repo_match = REPO_RE.search(output)
         assert github_repo_match
         return self._api.get_repo(github_repo_match.group(1))
 
@@ -37,7 +37,8 @@ class GitHubAPI:
         return self._task_re.findall(pull.title)
 
     def get_commit_message_in_release(self):
-        git.GitFuncs.fetch()()
+        if not self.skip_git_fetch:
+            git.GitFuncs.fetch()()
         return subprocess.check_output(
             "git log origin/{}..origin/{} --pretty=%B".format(
                 self._master_branch_name, self._release_branch_name

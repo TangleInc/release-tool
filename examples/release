@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+
+#
+# Handy script for release-tool with shortcuts
+# https://github.com/TangleInc/release-tool
+#
+
+set -o errexit
+set -o pipefail
+set -o nounset
+#set -o xtrace
+
+
+# provide relative path to release-tool config file
+RELEASE_TOOL_CONFIG="release_tool.yml"
+RELEASE_TOOL_CI_CONFIG="release_tool.ci.yml"
+
+
+# auto detect if it's a Frontend or Backend repo
+FILE="package.json"
+if test -f "${FILE}"; then
+    get_version=get_frontend_version
+    set_version=set_frontend_version
+else
+    get_version=get_backend_version
+    set_version=set_backend_version
+fi
+
+
+DOCKER_PARAMS=(
+    --volume $(pwd):/app
+    --volume ~/.gitignore_global:/root/.gitignore_global
+    --volume ~/.ssh:/root/.ssh
+    statusmoney/release-tool
+)
+
+
+function run_release_tool_natively() {
+    # Old/native way to use release-tool,
+    # better use `run_release_tool_in_docker`.
+
+    # These lines for pyenv and can be different
+    # for your virtual env manager
+    PYENV_PATH=${HOME}/.pyenv/bin
+
+    # run in subshell, to not override parent shell PATH,
+    # or environment variables, can be useful for frontends
+    # who don't need initialized `pyenv`
+    (
+        export PATH=${PYENV_PATH}:${PATH}
+        eval "$(pyenv init --path)"
+        eval "$(pyenv virtualenv-init -)"
+
+        python \
+            -m submodules.release_tool.release \
+            --config=${RELEASE_TOOL_CONFIG} \
+            "$@"
+    )
+}
+
+
+function run_docker_shell() {
+    docker run -it --rm \
+		--entrypoint bash \
+		${DOCKER_PARAMS[@]}
+}
+
+
+function run_release_tool_in_docker() {
+    # preferable usage of release-tool
+    docker run -it --rm \
+        ${DOCKER_PARAMS[@]} \
+        --config=${RELEASE_TOOL_CONFIG} \
+        "$@"
+}
+
+
+function run_release_tool_for_ci() {
+    # Set this env parameters in CI:
+    # * RELEASE_TOOL_GITHUB_TOKEN
+    # * RELEASE_TOOL_JIRA_TOKEN
+
+    docker run --rm \
+        --env RELEASE_TOOL_GITHUB_TOKEN \
+        --env RELEASE_TOOL_JIRA_TOKEN \
+        ${DOCKER_PARAMS[@]} \
+        --config=${RELEASE_TOOL_CI_CONFIG} \
+        --skip-git-fetch \
+        --noinput \
+        "$@"
+}
+
+
+function get_backend_version() {
+    cat pyproject.toml | grep -e '^version = "' | sed -E 's/.*"(.+)".*\s*/\1/'
+}
+
+
+function set_backend_version() {
+    version=$1
+    version_line="version = \"${version}\""
+    filename="pyproject.toml"
+
+    sed -E \
+        "s/^version = \"(.+)\".*\s*/${version_line}/" \
+        "${filename}" > "${filename}.tmp"
+    mv "${filename}.tmp" "${filename}"
+}
+
+
+function get_frontend_version() {
+    cat package.json | jq -r '.version'
+}
+
+
+function _set_frontend_version() {
+    version=$1
+    filename=$2
+
+    cat ${filename} \
+        | jq -r ".version = \"${version}\"" \
+        > "${filename}.tmp" \
+        && mv "${filename}.tmp" ${filename}
+}
+
+function set_frontend_version() {
+    version=$1
+    _set_frontend_version ${version} package.json
+    _set_frontend_version ${version} package-lock.json
+}
+
+# Parse CLI params
+# ---------------------------------------------------------
+
+case "${1:-}" in
+
+# Specialized commands:
+
+"get-backend-version")
+    # example: ./release get-backend-version
+    cmd="get_backend_version"
+    # echo "Running: ${cmd}" - get-version output should be clean
+    ${cmd}
+    ;;
+"set-backend-version")
+    # example: ./release set-backend-version 1.0.0
+    cmd="set_backend_version $2"
+    echo "Running: ${cmd}"
+    ${cmd}
+    ;;
+
+"get-frontend-version")
+    # example: ./release get-frontend-version
+    cmd="get_frontend_version"
+    # echo "Running: ${cmd}" - get-version output should be clean
+    ${cmd}
+    ;;
+"set-frontend-version")
+    # example: ./release set-frontend-version 1.0.0
+    cmd="set_frontend_version $2"
+    echo "Running: ${cmd}"
+    ${cmd}
+    ;;
+
+"run-in-docker")
+    # example: ./release run-in-docker make-links
+    cmd="run_release_tool_in_docker ${@:2}"
+    echo "Running: ${cmd}"
+    ${cmd}
+    ;;
+"run-native")
+    # example: ./release run-native make-links
+    cmd="run_release_tool_natively ${@:2}"
+    echo "Running: ${cmd}"
+    ${cmd}
+    ;;
+
+"ci")
+    # example: ./release ci make-links
+    cmd="run_release_tool_for_ci ${@:2}"
+    echo "Running: ${cmd}"
+    ${cmd}
+    ;;
+
+
+# Commonly used commands:
+
+"shell")
+    # example: ./release shell
+    cmd="run_docker_shell"
+    echo "Running: ${cmd}"
+    ${cmd}
+    ;;
+"get-version")
+    # example: ./release get-version
+    cmd="${get_version}"
+    # echo "Running: ${cmd}" - get-version output should be clean
+    ${cmd}
+    ;;
+"set-version")
+    # example: ./release set-version 1.0.0
+    cmd="${set_version} $2"
+    echo "Running: ${cmd}"
+    ${cmd}
+    ;;
+*)
+    # example: ./release make-links
+    cmd="run_release_tool_in_docker ${@:1}"
+    echo "Running: ${cmd}"
+    ${cmd}
+    ;;
+esac

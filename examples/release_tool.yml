@@ -1,3 +1,6 @@
+# Config file for release-tool
+# https://github.com/TangleInc/release-tool
+
 github:
   task-re: SM-\d+
 
@@ -46,14 +49,8 @@ jira:
     - "Story"
 
 hooks:
-  # Step 4. Choose you hooks
-  # for backend:
-  get-version: python submodules/shared/src/deploy/scripts/release_utils.py get-version
-  set-version: python submodules/shared/src/deploy/scripts/release_utils.py set-version {version}
-
-  # for frontend:
-  get-version: npm run --silent print-version
-  set-version: yarn version --no-git-tag-version --new-version {version} && npm i
+  get-version: ./release get-version
+  set-version: ./release set-version {version}
 
 
 # can be omitted if default params are not changed
