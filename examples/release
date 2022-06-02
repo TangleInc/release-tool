@@ -75,8 +75,8 @@ function run_release_tool_in_docker() {
 }
 
 
-function run_release_tool_for_travis() {
-    # Set this env parameters in TravisCI:
+function run_release_tool_for_ci() {
+    # Set this env parameters in CI:
     # * RELEASE_TOOL_GITHUB_TOKEN
     # * RELEASE_TOOL_JIRA_TOKEN
 
@@ -163,9 +163,9 @@ case "${1:-}" in
     run_release_tool_natively "${@:2}"
     ;;
 
-"travis")
-    # example: ./release travis make-links
-    run_release_tool_for_travis "${@:2}"
+"ci")
+    # example: ./release ci make-links
+    run_release_tool_for_ci "${@:2}"
     ;;
 
 
