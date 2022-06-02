@@ -85,6 +85,7 @@ function run_release_tool_for_travis() {
         --env RELEASE_TOOL_JIRA_TOKEN \
         ${DOCKER_PARAMS[@]} \
         --config=${RELEASE_TOOL_CI_CONFIG} \
+        --skip-git-fetch \
         --noinput \
         "$@"
 }

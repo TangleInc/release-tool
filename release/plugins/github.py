@@ -24,6 +24,7 @@ class GitHubAPI:
         self._release_branch_name = settings.release_branch_name
         self._task_re = re.compile(settings.github.task_re, flags=re.U | re.I)
         self.repository = self._get_repository()
+        self.skip_git_fetch = settings.skip_git_fetch
 
     def _get_repository(self):
         github_repo_match = REPO_RE.search(
@@ -37,7 +38,8 @@ class GitHubAPI:
         return self._task_re.findall(pull.title)
 
     def get_commit_message_in_release(self):
-        git.GitFuncs.fetch()()
+        if not self.skip_git_fetch:
+            git.GitFuncs.fetch()()
         return subprocess.check_output(
             "git log origin/{}..origin/{} --pretty=%B".format(
                 self._master_branch_name, self._release_branch_name
