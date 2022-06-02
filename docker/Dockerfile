@@ -15,8 +15,9 @@ RUN apt-get update && apt-get install -y \
     # clean
     && rm -rf /var/lib/apt/lists/*
 
-# Prepare global gitignore
-RUN git config --global core.excludesFile /root/.gitignore_global
+# Global git config
+RUN git config --global core.excludesFile /root/.gitignore_global \
+	&& git config --global --add safe.directory /app
 
 # Install installation tools
 RUN pip3 install --upgrade pip \
