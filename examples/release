@@ -27,6 +27,14 @@ else
 fi
 
 
+DOCKER_PARAMS=(
+    --volume $(pwd):/app
+    --volume ~/.gitignore_global:/root/.gitignore_global
+    --volume ~/.ssh:/root/.ssh
+    statusmoney/release-tool
+)
+
+
 function run_release_tool_natively() {
     # Old/native way to use release-tool,
     # better use `run_release_tool_in_docker`.
@@ -52,23 +60,16 @@ function run_release_tool_natively() {
 
 
 function run_docker_shell() {
-    # to run bash shell inside release-tool docker container
     docker run -it --rm \
-		--volume $(pwd):/app \
-        --volume ~/.gitignore_global:/root/.gitignore_global \
-        --volume ~/.ssh:/root/.ssh \
 		--entrypoint bash \
-		statusmoney/release-tool
+		${DOCKER_PARAMS[@]}
 }
 
 
 function run_release_tool_in_docker() {
     # preferable usage of release-tool
     docker run -it --rm \
-        --volume $(pwd):/app \
-        --volume ~/.gitignore_global:/root/.gitignore_global \
-        --volume ~/.ssh:/root/.ssh \
-        statusmoney/release-tool \
+        ${DOCKER_PARAMS[@]} \
         --config=${RELEASE_TOOL_CONFIG} \
         "$@"
 }
@@ -80,10 +81,9 @@ function run_release_tool_for_travis() {
     # * RELEASE_TOOL_JIRA_TOKEN
 
     docker run --rm \
-        --volume $(pwd):/app \
         --env RELEASE_TOOL_GITHUB_TOKEN \
         --env RELEASE_TOOL_JIRA_TOKEN \
-        statusmoney/release-tool \
+        ${DOCKER_PARAMS[@]} \
         --config=${RELEASE_TOOL_CI_CONFIG} \
         --noinput \
         "$@"
