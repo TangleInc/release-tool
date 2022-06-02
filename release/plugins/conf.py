@@ -293,7 +293,6 @@ def _parse_args():
     )
     parser.add_argument(
         "--skip-git-fetch",
-        name="skip_git_fetch",
         action="store_true",
         help="Skip fetching new changes from remote",
     )
