@@ -138,34 +138,48 @@ case "${1:-}" in
 
 "get-backend-version")
     # example: ./release get-backend-version
-    get_backend_version
+    cmd="get_backend_version"
+    # echo "Running: ${cmd}" - get-version output should be clean
+    ${cmd}
     ;;
 "set-backend-version")
     # example: ./release set-backend-version 1.0.0
-    set_backend_version $2
+    cmd="set_backend_version $2"
+    echo "Running: ${cmd}"
+    ${cmd}
     ;;
 
 "get-frontend-version")
     # example: ./release get-frontend-version
-    get_frontend_version
+    cmd="get_frontend_version"
+    # echo "Running: ${cmd}" - get-version output should be clean
+    ${cmd}
     ;;
 "set-frontend-version")
     # example: ./release set-frontend-version 1.0.0
-    set_frontend_version $2
+    cmd="set_frontend_version $2"
+    echo "Running: ${cmd}"
+    ${cmd}
     ;;
 
 "run-in-docker")
     # example: ./release run-in-docker make-links
-    run_release_tool_in_docker "${@:2}"
+    cmd="run_release_tool_in_docker ${@:2}"
+    echo "Running: ${cmd}"
+    ${cmd}
     ;;
 "run-native")
     # example: ./release run-native make-links
-    run_release_tool_natively "${@:2}"
+    cmd="run_release_tool_natively ${@:2}"
+    echo "Running: ${cmd}"
+    ${cmd}
     ;;
 
 "ci")
     # example: ./release ci make-links
-    run_release_tool_for_ci "${@:2}"
+    cmd="run_release_tool_for_ci ${@:2}"
+    echo "Running: ${cmd}"
+    ${cmd}
     ;;
 
 
@@ -173,18 +187,26 @@ case "${1:-}" in
 
 "shell")
     # example: ./release shell
-    run_docker_shell
+    cmd="run_docker_shell"
+    echo "Running: ${cmd}"
+    ${cmd}
     ;;
 "get-version")
     # example: ./release get-version
-    ${get_version}
+    cmd="${get_version}"
+    # echo "Running: ${cmd}" - get-version output should be clean
+    ${cmd}
     ;;
 "set-version")
     # example: ./release set-version 1.0.0
-    ${set_version} $2
+    cmd="${set_version} $2"
+    echo "Running: ${cmd}"
+    ${cmd}
     ;;
 *)
     # example: ./release make-links
-    run_release_tool_in_docker "${@:1}"
+    cmd="run_release_tool_in_docker ${@:1}"
+    echo "Running: ${cmd}"
+    ${cmd}
     ;;
 esac
