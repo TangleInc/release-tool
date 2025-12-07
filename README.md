@@ -2,30 +2,29 @@
 
 Table of Contents
 
-* [Release Tool](#release-tool)
-    * [1\. Usage](#1-usage)
-        * [1\.1\. Start release](#11-start-release)
-        * [1\.2\. Start hotfix](#12-start-hotfix)
-        * [1\.3\. Finish release](#13-finish-release)
-        * [1\.4\. Manual](#14-manual)
-    * [2\. Init](#2-init)
-        * [2\.1\. Prerequisites:](#21-prerequisites)
-            * [2\.1\.1\. Install poetry](#211-install-poetry)
-            * [2\.1\.2\. Install virtual env manager](#212-install-virtual-env-manager)
-        * [2\.2\. Configuration: for each local repository](#22-configuration-for-each-local-repository)
-            * [2\.2\.1\. Create virtual env](#221-create-virtual-env)
-            * [2\.2\.2\. Tell git to download submodule](#222-tell-git-to-download-submodule)
-            * [2\.2\.3\. Install dependencies](#223-install-dependencies)
-            * [2\.2\.4\. Create configuration file \./release\_tool\.yml](#224-create-configuration-file-release_toolyml)
-            * [2\.2\.5\. Create handy command \./release](#225-create-handy-command-release)
-        * [2\.3\. (Optional) How to integrate to new repository](#23-optional-how-to-integrate-to-new-repository)
+- [Release Tool](#release-tool)
+  - [1\. Usage](#1-usage)
+    - [1\.1\. Start release](#11-start-release)
+    - [1\.2\. Start hotfix](#12-start-hotfix)
+    - [1\.3\. Finish release](#13-finish-release)
+    - [1\.4\. Manual](#14-manual)
+  - [2\. Init](#2-init)
+    - [2\.1\. Prerequisites:](#21-prerequisites)
+      - [2\.1\.1\. Install poetry](#211-install-poetry)
+      - [2\.1\.2\. Install virtual env manager](#212-install-virtual-env-manager)
+    - [2\.2\. Configuration: for each local repository](#22-configuration-for-each-local-repository)
+      - [2\.2\.1\. Create virtual env](#221-create-virtual-env)
+      - [2\.2\.2\. Tell git to download submodule](#222-tell-git-to-download-submodule)
+      - [2\.2\.3\. Install dependencies](#223-install-dependencies)
+      - [2\.2\.4\. Create configuration file \./release_tool\.yml](#224-create-configuration-file-release_toolyml)
+      - [2\.2\.5\. Create handy command \./release](#225-create-handy-command-release)
+    - [2\.3\. (Optional) How to integrate to new repository](#23-optional-how-to-integrate-to-new-repository)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
 ```bash
 gh-md-toc README.md
 ```
-
 
 ## 1. Usage
 
@@ -37,10 +36,10 @@ gh-md-toc README.md
 
 ### 1.1. Start release
 
-* creates `release-X.X.X` branch from `develop`
-* creates Jira release task `{component} release X.X.X`
-* detects new commits/PR linked to Jira tasks and links them to Jira release task
-* can also link tasks to Jira version (create new or use existing one)
+- creates `release-X.X.X` branch from `develop`
+- creates Jira release task `{component} release X.X.X`
+- detects new commits/PR linked to Jira tasks and links them to Jira release task
+- can also link tasks to Jira version (create new or use existing one)
 
 ```shell
 ./release prepare
@@ -48,11 +47,11 @@ gh-md-toc README.md
 
 ### 1.2. Start hotfix
 
-* creates `release-X.X.X` branch from `master`
-* cherry pick specified pull requests using their numbers to a release branch
-* creates Jira release task `{component} release X.X.X`
-* detects new commits/PR linked to Jira tasks and links them to Jira release task
-* can also link tasks to Jira version (create new or use existing one)
+- creates `release-X.X.X` branch from `master`
+- cherry pick specified pull requests using their numbers to a release branch
+- creates Jira release task `{component} release X.X.X`
+- detects new commits/PR linked to Jira tasks and links them to Jira release task
+- can also link tasks to Jira version (create new or use existing one)
 
 ```shell
 # create hotfix without any commits
@@ -63,16 +62,17 @@ gh-md-toc README.md
 
 ### 1.3. Finish release
 
-* merge a release branch to master
-* mark the merge commit with a tag
-* merge `master` to `develop`
-* move jira tasks to final status ("Done" by default)
+- merge a release branch to master
+- mark the merge commit with a tag
+- merge `master` to `develop`
+- move jira tasks to final status ("Done" by default)
 
 ```shell
 ./release finish
 ```
 
 ### 1.4. Manual
+
 ```shell
 # ./release prepare
 ./release make-task
@@ -93,7 +93,6 @@ gh-md-toc README.md
 ./release merge-master-to-develop
 ```
 
-
 ## 2. Init
 
 ### 2.1. Prerequisites:
@@ -105,7 +104,7 @@ gh-md-toc README.md
 Install [poetry](https://github.com/sdispater/poetry) inside your virtualenv (prone to errors) or in a global python (preferable for python developers)
 
 ```shell
-pip install poetry==1.0.10
+curl -sSL https://install.python-poetry.org | python3 -
 ```
 
 #### 2.1.2. Install virtual env manager
@@ -123,7 +122,9 @@ pyenv install 3.8.10
 ```
 
 Configuration choices:
+
 1. For permanent access to virtual environment put these lines to your shell config (e.g. `.bash_profile`) and then reload your shell
+
 ```shell
 export PATH=${HOME}/.pyenv/bin
 eval "$(pyenv init --path)"
@@ -144,7 +145,6 @@ eval "$(pyenv virtualenv-init -)"
 
 python -m submodules.release_tool.release $*
 ```
-
 
 ### 2.2. Configuration: for each local repository
 
@@ -191,21 +191,23 @@ To get Jira token use [this doc](https://confluence.atlassian.com/cloud/api-toke
 ```shell
 # create a personal config, release_tool.yml is a name used by default, so it's strongly suggested
 cp submodules/release_tool/config-stub.full.yml release_tool.yml
-# add "release_tool.yml" to .gitignore 
+# add "release_tool.yml" to .gitignore
 ```
 
 #### 2.2.5. Create handy command `./release`
 
 To avoid typing long commands such as:
+
 ```shell
 python -m submodules.release_tool.release -h
 ```
 
 Make alias to use it like this `./release [command]`
+
 ```shell
 echo 'python -m submodules.release_tool.release $*' > release
 chmod +x release
-# you can either commit "release" or add it to .gitignore 
+# you can either commit "release" or add it to .gitignore
 ```
 
 ### 2.3. (Optional) How to integrate to new repository
